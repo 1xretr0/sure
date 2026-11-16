@@ -210,6 +210,7 @@ class Settings::ProvidersController < ApplicationController
       { key: "up",             title: "Up",              turbo_id: "up",             partial: "up_panel" },
       { key: "monobank",       title: "Monobank",        turbo_id: "monobank",       partial: "monobank_panel" },
       { key: "fio",            title: "Fio banka",       turbo_id: "fio",            partial: "fio_panel" },
+      { key: "santander_mx",   title: "Santander México", turbo_id: "santander-mx", partial: "santander_mx_panel" },
       { key: "lunchflow",      title: "Lunch Flow",      turbo_id: "lunchflow",      partial: "lunchflow_panel" },
       { key: "redbark",        title: "Redbark",         turbo_id: "redbark",        partial: "redbark_panel" },
       { key: "simplefin",      title: "SimpleFIN",       turbo_id: "simplefin",      partial: "simplefin_panel" },
@@ -243,6 +244,7 @@ class Settings::ProvidersController < ApplicationController
       "up"             => "UpItem",
       "monobank"       => "MonobankItem",
       "fio"            => "FioItem",
+      "santander_mx"   => "SantanderMxItem",
       "simplefin"      => "SimplefinItem",
       "lunchflow"      => "LunchflowItem",
       "redbark"        => "RedbarkItem",
@@ -277,6 +279,8 @@ class Settings::ProvidersController < ApplicationController
         @monobank_items = Current.family.monobank_items.active.ordered
       when "fio"
         @fio_items = Current.family.fio_items.active.ordered
+      when "santander_mx"
+        @santander_mx_items = Current.family.santander_mx_items.active.ordered
       when "simplefin"
         @simplefin_items = Current.family.simplefin_items.ordered
       when "lunchflow"
@@ -362,6 +366,7 @@ class Settings::ProvidersController < ApplicationController
       @questrade_items = Current.family.questrade_items.active.ordered.select(:id)
       @sharesight_items = Current.family.sharesight_items.active.ordered
       @fio_items = Current.family.fio_items.active.ordered
+      @santander_mx_items = Current.family.santander_mx_items.active.ordered
 
       # Wallet uploads are managed on iOS. Only expose linked accounts the
       # current admin can access, including connections that need repair.
@@ -393,6 +398,7 @@ class Settings::ProvidersController < ApplicationController
         "up"             => @up_items,
         "monobank"       => @monobank_items,
         "fio"            => @fio_items,
+        "santander_mx"   => @santander_mx_items,
         "simplefin"      => @simplefin_items,
         "lunchflow"      => @lunchflow_items,
         "redbark"        => @redbark_items,

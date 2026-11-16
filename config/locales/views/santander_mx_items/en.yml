@@ -30,3 +30,50 @@ en:
       account_sync_schedule_failed: Could not schedule Santander MX account sync
       unauthorized: The Santander MX service rejected the API token. Update the connection settings.
       sync_failed: Could not reach the Santander MX service. Try again later.
+  santander_mx_items:
+    create:
+      success: Santander MX connection added. The first sync has started.
+      token_required: Enter the API token of your statement parser service.
+    update:
+      success: Santander MX connection updated.
+    destroy:
+      success: Santander MX connection scheduled for deletion.
+      unlink_failed: Could not unlink the Santander MX accounts. Try again.
+    select_existing_account:
+      title: Link %{account_name} to Santander MX
+      description: Choose the Santander account or card whose transactions should be imported into this account.
+      no_accounts: No unlinked Santander accounts yet. Sync the connection to discover the accounts in your statements.
+      sync_now: Sync now
+      cancel: Cancel
+      link_account: Link account
+      last4: "Ending %{last4}"
+      account_already_linked: This account is already linked to a provider.
+      no_credentials_configured: The Santander MX connection is missing its URL or API token. Update it in the provider settings.
+    link_existing_account:
+      success: "%{account_name} is now linked to Santander MX."
+      no_account_selected: Choose a Santander account to link.
+      account_already_linked: This account is already linked to a provider.
+      santander_mx_account_already_linked: That Santander account is already linked to another account.
+      unsupported_account_type: Santander MX can only be linked to checking, savings and credit card accounts.
+    provider_panel:
+      default_connection_name: Santander MX
+      add_connection: Add connection
+      update_connection: Update connection
+      connection_name_label: Connection name
+      connection_name_placeholder: Santander MX
+      base_url_label: Parser service URL
+      base_url_placeholder: https://santander-parser.example.com
+      api_token_label: API token
+      api_token_placeholder: Paste the parser service API token
+      keep_token_placeholder: Leave blank to keep the current token
+      sync_start_date_label: Import transactions from
+      sync_start_date_hint: The first sync imports transactions from this date onward.
+      accounts_summary: "%{linked} of %{total} Santander accounts linked"
+      syncing: Syncing...
+      requires_update: Needs attention
+      requires_update_notice: The parser service rejected the API token. Enter the current token to reconnect.
+      last_synced: "Synced %{timestamp} ago"
+      never_synced: Never synced
+      sync: Sync
+      disconnect: Disconnect
+      disconnect_confirm: Disconnect %{name}? Linked accounts keep their history but stop syncing.

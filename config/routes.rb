@@ -1037,6 +1037,17 @@ Rails.application.routes.draw do
     end
   end
 
+  resources :santander_mx_items, only: %i[create update destroy] do
+    collection do
+      get :select_existing_account
+      post :link_existing_account
+    end
+
+    member do
+      post :sync
+    end
+  end
+
   resources :sophtron_items, only: %i[index new create show edit update destroy] do
     collection do
       get :preload_accounts

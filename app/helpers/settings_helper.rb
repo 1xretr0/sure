@@ -70,6 +70,9 @@ module SettingsHelper
     when "fio"
       return { status: :off } unless @fio_items&.any?
       sync_based_summary(key)
+    when "santander_mx"
+      return { status: :off } unless @santander_mx_items&.any?
+      sync_based_summary(key)
     when "simplefin"
       return { status: :off } unless @simplefin_items&.any?
       sync_based_summary(key)
