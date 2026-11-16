@@ -36,7 +36,7 @@
 
           <div class="space-y-2">
             <% @available_accounts.each do |product| %>
-              <label class="flex items-start gap-3 p-3 border border-primary rounded-lg hover:bg-subtle cursor-pointer transition-colors">
+              <label class="flex items-start gap-3 p-3 border border-primary rounded-lg hover:bg-surface-hover cursor-pointer transition-colors">
                 <%= radio_button_tag :santander_mx_account_id, product.id, false, class: "mt-1" %>
                 <div class="flex-1">
                   <div class="font-medium text-sm text-primary"><%= product.name %></div>

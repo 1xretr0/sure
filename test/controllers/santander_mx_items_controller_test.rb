@@ -189,6 +189,64 @@ class SantanderMxItemsControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  test "non-admins are refused on every action and nothing changes" do
+    sign_in users(:family_member)
+    SyncJob.expects(:perform_later).never
+    DestroyJob.expects(:perform_later).never
+    original_name = @item.name
+    account = accounts(:depository)
+
+    assert_no_difference [ "SantanderMxItem.count", "AccountProvider.count" ] do
+      post santander_mx_items_url, params: {
+        santander_mx_item: { name: "Cards", base_url: "https://parser.example.com", api_token: "tok" }
+      }
+      assert_redirected_to accounts_path
+
+      patch santander_mx_item_url(@item), params: { santander_mx_item: { name: "Renamed", api_token: "new" } }
+      assert_redirected_to accounts_path
+
+      delete santander_mx_item_url(@item)
+      assert_redirected_to accounts_path
+
+      post sync_santander_mx_item_url(@item)
+      assert_redirected_to accounts_path
+
+      get select_existing_account_santander_mx_items_url(santander_mx_item_id: @item.id, account_id: account.id)
+      assert_redirected_to accounts_path
+
+      post link_existing_account_santander_mx_items_url, params: {
+        santander_mx_item_id: @item.id, account_id: account.id, santander_mx_account_id: @product.id
+      }
+      assert_redirected_to accounts_path
+    end
+
+    assert_equal I18n.t("shared.require_admin"), flash[:alert]
+    @item.reload
+    assert_equal original_name, @item.name
+    assert_equal "santander-test-token", @item.api_token
+    assert_not @item.scheduled_for_deletion?
+    assert_nil @product.reload.account_provider
+  end
+
+  test "cannot use another family's account" do
+    foreign_account = families(:empty).accounts.create!(
+      name: "Foreign", balance: 0, currency: "MXN", accountable: Depository.new
+    )
+
+    get select_existing_account_santander_mx_items_url(
+      santander_mx_item_id: @item.id, account_id: foreign_account.id
+    )
+    assert_response :not_found
+
+    assert_no_difference "AccountProvider.count" do
+      post link_existing_account_santander_mx_items_url, params: {
+        santander_mx_item_id: @item.id, account_id: foreign_account.id, santander_mx_account_id: @product.id
+      }
+    end
+    assert_response :not_found
+    assert_nil @product.reload.account_provider
+  end
+
   test "the providers settings page renders the Santander panel" do
     get settings_providers_path
 

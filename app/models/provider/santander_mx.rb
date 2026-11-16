@@ -17,6 +17,9 @@ class Provider::SantanderMx < Provider
   # 503: Gmail needs re-authorizing on the service host (or its API_TOKEN is unset).
   class ReauthorizationRequiredError < Error; end
 
+  # HTTParty only strips basic_auth on a host change, so a redirect would carry the bearer token along.
+  no_follow true
+
   headers "User-Agent" => "Sure Finance Santander MX Client (https://github.com/we-promise/sure)"
   default_options.merge!({ timeout: 60 }.merge(httparty_ssl_options))
 

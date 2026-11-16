@@ -20,8 +20,8 @@ en:
         importing: Importing transactions from Santander MX...
         checking_setup: Checking account configuration...
         needs_setup:
-          one: 1 account needs setup...
-          other: "%{count} accounts need setup..."
+          one: 1 account not linked yet...
+          other: "%{count} accounts not linked yet..."
         processing: Processing transactions...
         calculating: Calculating balances...
     errors:
@@ -71,7 +71,7 @@ en:
       accounts_summary: "%{linked} of %{total} Santander accounts linked"
       syncing: Syncing...
       requires_update: Needs attention
-      requires_update_notice: The parser service rejected the API token. Enter the current token to reconnect.
+      requires_update_notice: "The parser service needs attention: it rejected the API token, or Gmail needs re-authorizing on the service host. See the sync details."
       last_synced: "Synced %{timestamp} ago"
       never_synced: Never synced
       sync: Sync
@@ -87,7 +87,7 @@ en:
       sync: Sync
       delete: Delete
       requires_update_title: Needs attention
-      requires_update_description: The parser service rejected the API token for this connection. Enter the current token in the provider settings.
+      requires_update_description: "The parser service needs attention: it rejected the API token, or Gmail needs re-authorizing on the service host. See the sync details."
       update_token: Update token
       waiting_title: Waiting to be linked
       waiting_description: Link these products from the "Link provider" menu of the matching Sure account.

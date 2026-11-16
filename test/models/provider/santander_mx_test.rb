@@ -140,4 +140,13 @@ class Provider::SantanderMxTest < ActiveSupport::TestCase
       assert_not_includes error.message, "tok"
     end
   end
+
+  test "does not follow redirects so the bearer token cannot leave the configured host" do
+    assert_equal true, Provider::SantanderMx.default_options[:no_follow]
+
+    stub_response(302, "") do
+      error = assert_raises(Provider::SantanderMx::Error) { provider.get_transactions(since: Date.current) }
+      assert_equal :fetch_failed, error.failure_code
+    end
+  end
 end
