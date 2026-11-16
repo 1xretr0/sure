@@ -8,3 +8,9 @@ en:
     santander_mx:
       create_santander_mx_item:
         default_name: Santander MX
+  santander_mx:
+    entry:
+      fallback_name:
+        purchase: Santander purchase
+        transfer_in: Santander incoming transfer
+        transfer_out: Santander outgoing transfer
