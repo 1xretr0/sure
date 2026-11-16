@@ -77,3 +77,22 @@ en:
       sync: Sync
       disconnect: Disconnect
       disconnect_confirm: Disconnect %{name}? Linked accounts keep their history but stop syncing.
+    santander_mx_item:
+      deletion_in_progress: Deletion in progress
+      syncing: Syncing
+      requires_update: Needs attention
+      error: Error
+      status: "Synced %{timestamp} ago"
+      status_never: Never synced
+      sync: Sync
+      delete: Delete
+      requires_update_title: Needs attention
+      requires_update_description: The parser service rejected the API token for this connection. Enter the current token in the provider settings.
+      update_token: Update token
+      waiting_title: Waiting to be linked
+      waiting_description: Link these products from the "Link provider" menu of the matching Sure account.
+      waiting_to_link: "%{name} (ending %{last4})"
+      waiting_to_link_no_last4: "%{name}"
+      no_accounts_title: No accounts imported yet
+      no_accounts_description: Santander accounts appear after the first successful sync.
+      sync_now: Sync now

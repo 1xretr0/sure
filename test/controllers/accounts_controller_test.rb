@@ -1917,6 +1917,27 @@ class AccountsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "accounts index shows a Santander connection card with waiting products" do
+    item = santander_mx_items(:one)
+
+    get accounts_url
+
+    assert_response :success
+    assert_select "##{dom_id(item)}", text: /#{Regexp.escape(item.name)}/
+    assert_includes response.body, "SANTANDER GOLD"
+    assert_includes response.body, I18n.t("santander_mx_items.santander_mx_item.waiting_to_link", name: "SANTANDER GOLD", last4: "1234")
+    assert_select "##{dom_id(item)}", text: /need setup/i, count: 0
+  end
+
+  test "accounts index shows the Santander requires update state" do
+    santander_mx_items(:one).update!(status: :requires_update)
+
+    get accounts_url
+
+    assert_response :success
+    assert_includes response.body, I18n.t("santander_mx_items.santander_mx_item.requires_update")
+  end
+
   private
     def sidebar_sparkline_src(frame_id)
       css_select("turbo-frame##{frame_id}").first["src"]
