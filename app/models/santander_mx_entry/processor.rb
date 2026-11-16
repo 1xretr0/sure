@@ -7,7 +7,7 @@ class SantanderMxEntry::Processor
   SIGNS = { "purchase" => 1, "transfer_out" => 1, "transfer_in" => -1 }.freeze
 
   def initialize(row, santander_mx_account:)
-    @row = row.to_h.with_indifferent_access
+    @row = (row.is_a?(Hash) ? row : {}).with_indifferent_access
     @santander_mx_account = santander_mx_account
   end
 

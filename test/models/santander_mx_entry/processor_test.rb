@@ -52,6 +52,10 @@ class SantanderMxEntry::ProcessorTest < ActiveSupport::TestCase
     assert_skipped row("date" => "not a date")
   end
 
+  test "skips a row that is not a hash" do
+    [ "junk", 42, nil, [ 1 ] ].each { |junk| assert_skipped junk }
+  end
+
   test "skips a row for an account that is not linked" do
     @santander_account.account_provider.destroy!
 

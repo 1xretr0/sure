@@ -25,8 +25,8 @@ class SantanderMxAccount::Transactions::Processor
       end
     rescue => e
       failed += 1
-      errors << { index: index, transaction_id: row.to_h["id"] || "unknown", error: "#{e.class}: #{e.message}" }
-      Rails.logger.error "SantanderMxAccount::Transactions::Processor - Error processing row #{row.to_h["id"]}: #{e.class} - #{e.message}"
+      errors << { index: index, transaction_id: (row.is_a?(Hash) && row["id"]) || "unknown", error: "#{e.class}: #{e.message}" }
+      Rails.logger.error "SantanderMxAccount::Transactions::Processor - Error processing row #{row.is_a?(Hash) ? row["id"] : "unknown"}: #{e.class} - #{e.message}"
     end
 
     { success: failed.zero?, total: rows.size, imported: imported, skipped: skipped, failed: failed, errors: errors }

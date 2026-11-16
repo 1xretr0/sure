@@ -24,6 +24,19 @@ class SantanderMxAccount::Transactions::ProcessorTest < ActiveSupport::TestCase
     assert_equal({ success: true, total: 2, imported: 1, skipped: 1, failed: 0, errors: [] }, result)
   end
 
+  test "skips rows that are not hashes without failing" do
+    @santander_account.update!(raw_transactions_payload: {
+      "m1" => row("m1", "purchase"),
+      "a" => "junk",
+      "b" => 42,
+      "c" => nil
+    })
+
+    result = SantanderMxAccount::Transactions::Processor.new(@santander_account).process
+
+    assert_equal({ success: true, total: 4, imported: 1, skipped: 3, failed: 0, errors: [] }, result)
+  end
+
   test "an empty payload is a successful no-op" do
     result = SantanderMxAccount::Transactions::Processor.new(@santander_account).process
 
