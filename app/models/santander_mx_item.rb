@@ -27,6 +27,54 @@ class SantanderMxItem < ApplicationRecord
     base_url.present? && api_token.present?
   end
 
+  # Fetch the latest rows from the statement parser. Returns the importer's result hash.
+  def import_latest_santander_mx_data
+    provider = santander_mx_provider
+    unless provider
+      capture_sync_error("Cannot import: Santander MX provider is not configured")
+      return { success: false, error: I18n.t("santander_mx_item.errors.not_configured") }
+    end
+
+    SantanderMxItem::Importer.new(self, provider: provider).import
+  ensure
+    # A rolled-back import leaves dirty cursor/status values on this instance.
+    reload
+  end
+
+  # Process each linked, visible Santander account, returning a per-account result array.
+  def process_accounts
+    santander_mx_accounts.joins(:account).merge(Account.visible).map do |santander_mx_account|
+      result = SantanderMxAccount::Transactions::Processor.new(santander_mx_account).process
+      if result.is_a?(Hash) && result.with_indifferent_access[:success] == false
+        { santander_mx_account_id: santander_mx_account.id, success: false, error: I18n.t("santander_mx_item.errors.account_processing_failed") }
+      else
+        { santander_mx_account_id: santander_mx_account.id, success: true, result: result }
+      end
+    rescue => e
+      capture_sync_error(
+        "Failed to process account", e,
+        account_provider: santander_mx_account.account_provider,
+        santander_mx_account_id: santander_mx_account.id
+      )
+      { santander_mx_account_id: santander_mx_account.id, success: false, error: I18n.t("santander_mx_item.errors.account_processing_failed") }
+    end
+  end
+
+  # Enqueue a balance sync for each visible linked account, returning per-account results.
+  def schedule_account_syncs(parent_sync: nil, window_start_date: nil, window_end_date: nil)
+    accounts.visible.map do |account|
+      account.sync_later(
+        parent_sync: parent_sync,
+        window_start_date: window_start_date,
+        window_end_date: window_end_date
+      )
+      { account_id: account.id, success: true }
+    rescue => e
+      capture_sync_error("Failed to schedule sync for account", e, account: account, account_id: account.id)
+      { account_id: account.id, success: false, error: I18n.t("santander_mx_item.errors.account_sync_schedule_failed") }
+    end
+  end
+
   def linked_accounts_count
     account_counts[:linked]
   end
@@ -48,6 +96,21 @@ class SantanderMxItem < ApplicationRecord
   end
 
   private
+
+    # Never put the API token or base URL in the metadata.
+    def capture_sync_error(message, error = nil, account: nil, account_provider: nil, **metadata)
+      DebugLogEntry.capture(
+        category: "provider_sync_error",
+        level: "error",
+        message: message,
+        source: self.class.name,
+        provider_key: "santander_mx",
+        family: family,
+        account: account,
+        account_provider: account_provider,
+        metadata: { santander_mx_item_id: id, error_class: error&.class&.name, error_message: error&.message }.compact.merge(metadata)
+      )
+    end
 
     def base_url_is_http_url
       return if base_url.blank?

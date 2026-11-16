@@ -15,6 +15,18 @@ en:
         transfer_in: Santander incoming transfer
         transfer_out: Santander outgoing transfer
   santander_mx_item:
+    sync:
+      status:
+        importing: Importing transactions from Santander MX...
+        checking_setup: Checking account configuration...
+        needs_setup:
+          one: 1 account needs setup...
+          other: "%{count} accounts need setup..."
+        processing: Processing transactions...
+        calculating: Calculating balances...
     errors:
+      not_configured: The Santander MX connection is missing its URL or API token.
+      account_processing_failed: Could not sync Santander MX account
+      account_sync_schedule_failed: Could not schedule Santander MX account sync
       unauthorized: The Santander MX service rejected the API token. Update the connection settings.
       sync_failed: Could not reach the Santander MX service. Try again later.
