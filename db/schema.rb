@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_14_233000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_15_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -2349,6 +2349,33 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_233000) do
     t.index ["rule_group_id"], name: "index_rules_on_rule_group_id"
   end
 
+  create_table "santander_mx_accounts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "currency"
+    t.string "last4"
+    t.string "name", null: false
+    t.jsonb "raw_transactions_payload"
+    t.uuid "santander_mx_item_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["santander_mx_item_id", "name"], name: "index_santander_mx_accounts_on_item_and_name", unique: true
+    t.index ["santander_mx_item_id"], name: "index_santander_mx_accounts_on_santander_mx_item_id"
+  end
+
+  create_table "santander_mx_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.text "api_token", null: false
+    t.string "base_url", null: false
+    t.datetime "created_at", null: false
+    t.uuid "family_id", null: false
+    t.string "name", null: false
+    t.boolean "scheduled_for_deletion", default: false, null: false
+    t.string "status", default: "good", null: false
+    t.date "sync_start_date"
+    t.date "transactions_synced_through"
+    t.datetime "updated_at", null: false
+    t.index ["family_id"], name: "index_santander_mx_items_on_family_id"
+    t.index ["status"], name: "index_santander_mx_items_on_status"
+  end
+
   create_table "securities", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "asset_class"
     t.string "asset_sub_class"
@@ -3290,6 +3317,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_233000) do
   add_foreign_key "rule_runs", "rules"
   add_foreign_key "rules", "families"
   add_foreign_key "rules", "rule_groups", on_delete: :nullify
+  add_foreign_key "santander_mx_accounts", "santander_mx_items"
+  add_foreign_key "santander_mx_items", "families"
   add_foreign_key "security_audit_logs", "users", on_delete: :nullify
   add_foreign_key "security_prices", "securities"
   add_foreign_key "security_splits", "securities", on_delete: :cascade

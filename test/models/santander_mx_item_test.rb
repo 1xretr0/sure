@@ -1,0 +1,57 @@
+require "test_helper"
+
+class SantanderMxItemTest < ActiveSupport::TestCase
+  setup do
+    @item = santander_mx_items(:one)
+  end
+
+  test "rejects a base_url that is not an absolute http(s) URL" do
+    [ "parser:5000", "ftp://x", "http://" ].each do |url|
+      @item.base_url = url
+      assert_not @item.valid?, "expected #{url.inspect} to be invalid"
+      assert @item.errors[:base_url].any?
+    end
+  end
+
+  test "accepts http and https base URLs" do
+    [ "http://parser:5000", "https://host/santander" ].each do |url|
+      @item.base_url = url
+      assert @item.valid?, "expected #{url.inspect} to be valid"
+    end
+  end
+
+  test "requires an api_token on create" do
+    item = families(:dylan_family).santander_mx_items.new(name: "Santander MX", base_url: "http://parser.test")
+    assert_not item.valid?
+    assert item.errors[:api_token].any?
+  end
+
+  test "is syncable unless scheduled for deletion" do
+    assert_includes SantanderMxItem.syncable, @item
+
+    @item.update!(scheduled_for_deletion: true)
+    assert_not_includes SantanderMxItem.syncable, @item
+  end
+
+  test "counts linked and unlinked accounts" do
+    assert_equal 1, @item.total_accounts_count
+    assert_equal 0, @item.linked_accounts_count
+    assert_equal 1, @item.unlinked_accounts_count
+
+    santander_mx_accounts(:gold).ensure_account_provider!(accounts(:depository))
+    @item.reload
+
+    assert_equal 1, @item.linked_accounts_count
+    assert_equal 0, @item.unlinked_accounts_count
+    assert_equal 1, @item.total_accounts_count
+  end
+
+  test "creating an item through the family starts a sync with the default name" do
+    family = families(:dylan_family)
+    SantanderMxItem.any_instance.expects(:sync_later)
+
+    item = family.create_santander_mx_item!(base_url: "http://parser.test", api_token: "t")
+
+    assert_equal "Santander MX", item.name
+  end
+end

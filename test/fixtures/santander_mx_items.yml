@@ -1,0 +1,6 @@
+one:
+  family: dylan_family
+  name: "Test Santander MX Connection"
+  base_url: "http://parser.test"
+  api_token: "santander-test-token"
+  status: good
