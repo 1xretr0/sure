@@ -82,6 +82,13 @@ class Provider::Base
     false
   end
 
+  # Whether this provider sends an account balance. Override to false when it
+  # sends transactions only, so the balance stays ledger-driven.
+  # @return [Boolean]
+  def reports_balance?
+    true
+  end
+
   # Provider-specific raw data payload
   # @return [Hash, nil] The raw payload from the provider
   def raw_payload

@@ -1898,6 +1898,16 @@ class AccountsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-sortable-list-target='item'][data-sortable-list-id=?]", @account.id
   end
 
+  test "shows New balance on a linked account whose provider does not report balances" do
+    Provider::FioAdapter.any_instance.stubs(:reports_balance?).returns(false)
+    AccountProvider.create!(account: @account, provider: fio_accounts(:checking))
+
+    get account_path(@account)
+
+    assert_response :success
+    assert_includes response.body, I18n.t("accounts.show.activity.new_balance")
+  end
+
   private
     def sidebar_sparkline_src(frame_id)
       css_select("turbo-frame##{frame_id}").first["src"]

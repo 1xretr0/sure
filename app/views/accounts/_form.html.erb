@@ -13,7 +13,7 @@
 
     <%= form.text_field :name, placeholder: t(".name_placeholder"), required: "required", label: t(".name_label") %>
 
-    <% unless account.linked? %>
+    <% unless account.balance_from_provider? %>
       <%= form.money_field :balance, label: t(".balance"), required: true, default_currency: Current.family.currency %>
     <% end %>
 

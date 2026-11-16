@@ -135,6 +135,31 @@ class Account::SyncerTest < ActiveSupport::TestCase
     end
   end
 
+  test "uses the forward strategy for a linked account whose provider does not report balances" do
+    account = accounts(:depository)
+    AccountProvider.create!(account: account, provider: fio_accounts(:checking))
+    Provider::FioAdapter.any_instance.stubs(:reports_balance?).returns(false)
+    Account::MarketDataImporter.any_instance.stubs(:import_all)
+
+    Balance::Materializer.expects(:new)
+      .with(account, strategy: :forward, window_start_date: nil)
+      .returns(stub(materialize_balances: true))
+
+    Account::Syncer.new(account).perform_sync(OpenStruct.new(window_start_date: nil))
+  end
+
+  test "still uses the reverse strategy for a balance-reporting linked account" do
+    account = accounts(:depository)
+    AccountProvider.create!(account: account, provider: fio_accounts(:checking))
+    Account::MarketDataImporter.any_instance.stubs(:import_all)
+
+    Balance::Materializer.expects(:new)
+      .with(account, strategy: :reverse, window_start_date: nil)
+      .returns(stub(materialize_balances: true))
+
+    Account::Syncer.new(account).perform_sync(OpenStruct.new(window_start_date: nil))
+  end
+
   private
     def linked_investment_account
       family = families(:empty)

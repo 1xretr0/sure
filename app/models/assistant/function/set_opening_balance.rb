@@ -63,7 +63,7 @@ class Assistant::Function::SetOpeningBalance < Assistant::Function
   def call(params = {})
     account = find_account(params["account_id"])
     return error("not_found", "No account with id '#{params["account_id"]}' that you can write to.") unless account
-    return error("linked_account", "#{account.name} is synced from a provider, which manages its balances. Only manual accounts have an editable opening balance.") if account.linked?
+    return error("linked_account", "#{account.name} is synced from a provider, which manages its balances. Only manual accounts have an editable opening balance.") if account.balance_from_provider?
 
     balance = parse_balance(params["balance"])
     return error("invalid_balance", "balance must be a number.") unless balance

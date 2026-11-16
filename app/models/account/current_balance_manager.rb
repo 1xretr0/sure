@@ -38,7 +38,7 @@ class Account::CurrentBalanceManager
   # account: a manual one has no statement, and its strategies reconcile against
   # today by design.
   def set_current_balance(balance, date: nil)
-    if account.linked?
+    if account.balance_from_provider?
       set_current_balance_for_linked_account(balance, date || Date.current)
     else
       result = set_current_balance_for_manual_account(balance)

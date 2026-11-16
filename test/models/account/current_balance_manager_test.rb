@@ -361,4 +361,29 @@ class Account::CurrentBalanceManagerTest < ActiveSupport::TestCase
 
     assert_equal @linked_account.balance, @linked_account.balance
   end
+
+  test "a linked account whose provider does not report balances takes the manual path" do
+    Provider::FioAdapter.any_instance.stubs(:reports_balance?).returns(false)
+    account = @family.accounts.create!(
+      name: "Ledger driven",
+      balance: 900,
+      cash_balance: 900,
+      currency: "USD",
+      accountable: Depository.new
+    )
+    AccountProvider.create!(account: account, provider: fio_accounts(:checking))
+    account.entries.create!(
+      date: 1.year.ago.to_date,
+      name: "Opening",
+      amount: 1000,
+      currency: "USD",
+      entryable: Valuation.new(kind: "opening_anchor")
+    )
+
+    result = Account::CurrentBalanceManager.new(account).set_current_balance(1500)
+
+    assert result.success?
+    assert_not account.reload.has_current_anchor?
+    assert_equal 1500, account.balance
+  end
 end

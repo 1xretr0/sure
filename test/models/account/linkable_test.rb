@@ -162,4 +162,22 @@ class Account::LinkableTest < ActiveSupport::TestCase
     assert @account.unlinked?
     refute_includes Account.linked, @account
   end
+
+  test "balance_from_provider? is false for a manual account" do
+    refute @account.balance_from_provider?
+  end
+
+  test "balance_from_provider? is true for an account linked to a balance-reporting provider" do
+    AccountProvider.create!(account: @account, provider: fio_accounts(:checking))
+
+    assert @account.balance_from_provider?
+  end
+
+  test "balance_from_provider? is false when the linked provider does not report balances" do
+    Provider::FioAdapter.any_instance.stubs(:reports_balance?).returns(false)
+    AccountProvider.create!(account: @account, provider: fio_accounts(:checking))
+
+    assert @account.linked?
+    refute @account.balance_from_provider?
+  end
 end

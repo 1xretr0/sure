@@ -26,6 +26,11 @@ module Account::Linkable
     account_providers.any? || plaid_account.present? || simplefin_account.present?
   end
 
+  # A linked account whose provider sends transactions but no balance keeps the manual, ledger-driven balance
+  def balance_from_provider?
+    linked? && providers.all?(&:reports_balance?)
+  end
+
   # An "offline" or "unlinked" account is one where the user tracks values and
   # adds transactions manually, without the help of a data provider
   def unlinked?
