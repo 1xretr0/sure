@@ -14,3 +14,7 @@ en:
         purchase: Santander purchase
         transfer_in: Santander incoming transfer
         transfer_out: Santander outgoing transfer
+  santander_mx_item:
+    errors:
+      unauthorized: The Santander MX service rejected the API token. Update the connection settings.
+      sync_failed: Could not reach the Santander MX service. Try again later.
