@@ -114,7 +114,15 @@ class Provider::SantanderMx < Provider
       when 200
         parse_response_body(response)
       when 400
-        raise Error.new(service_message(response, "Santander MX rejected the request"), failure_code: :bad_request)
+        message = service_message(response, "Santander MX rejected the request")
+        # The service's validation text (e.g. "since is required") is short and PII-free;
+        # the raw body is never logged.
+        capture_request_error(
+          level: "error",
+          message: "Santander MX API rejected the request",
+          metadata: { status: 400, service_error: message.truncate(200) }
+        )
+        raise Error.new(message, failure_code: :bad_request)
       when 401
         raise AuthenticationError.new("Santander MX service rejected the credentials", failure_code: :unauthorized)
       when 503

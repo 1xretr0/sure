@@ -79,6 +79,25 @@ class Provider::SantanderMxTest < ActiveSupport::TestCase
     end
   end
 
+  test "logs a 400 with the service error text and never the token" do
+    captured = []
+    DebugLogEntry.expects(:capture).once.with { |**args| captured << args }
+
+    Provider::SantanderMx.stub(:get, ->(_url, query:, headers:) {
+      FakeResponse.new(code: 400, message: "", body: { error: "since is required" }.to_json)
+    }) do
+      client = Provider::SantanderMx.new(base_url: "http://parser.test", api_token: "s3cret-xyz")
+      assert_raises(Provider::SantanderMx::Error) { client.get_transactions(since: Date.current) }
+    end
+
+    entry = captured.sole
+    assert_equal "santander_mx", entry[:provider_key]
+    assert_equal "error", entry[:level]
+    assert_equal 400, entry[:metadata][:status]
+    assert_equal "since is required", entry[:metadata][:service_error]
+    assert_not_includes entry.to_s, "s3cret-xyz"
+  end
+
   test "maps 502 and other 5xx to Error with failure_code server_error" do
     [ 502, 500 ].each do |status|
       stub_response(status, { error: "gmail failure" }.to_json) do
