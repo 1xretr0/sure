@@ -1908,6 +1908,15 @@ class AccountsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, I18n.t("accounts.show.activity.new_balance")
   end
 
+  test "the new credit card and depository pages render when the family has a Santander connection" do
+    assert @user.family.santander_mx_items.exists?
+
+    [ new_credit_card_path(step: "method_select"), new_depository_path(step: "method_select") ].each do |path|
+      get path
+      assert_response :success
+    end
+  end
+
   private
     def sidebar_sparkline_src(frame_id)
       css_select("turbo-frame##{frame_id}").first["src"]

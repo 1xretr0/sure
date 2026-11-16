@@ -19,6 +19,7 @@ class DataEnrichment < ApplicationRecord
     questrade: "questrade",
     redbark: "redbark",
     rule: "rule",
+    santander_mx: "santander_mx",
     sharesight: "sharesight",
     similar: "similar",
     simplefin: "simplefin",

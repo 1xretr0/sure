@@ -1,5 +1,9 @@
 ---
 en:
+  providers:
+    santander_mx:
+      name: Santander México
+      description: Sync Santander México accounts and cards from a self-hosted statement parser
   family:
     santander_mx:
       create_santander_mx_item:

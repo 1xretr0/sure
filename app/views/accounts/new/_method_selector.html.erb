@@ -27,6 +27,7 @@
           check here a GUEST is offered the link and refused on submit, which
           reads as a broken control rather than an absent one. %>
       <% next unless Current.user&.admin? || (Current.user&.member? && config[:member_connectable]) %>
+      <% next if config[:new_account_path].blank? %>
       <% link_path = config[:new_account_path].call(accountable_type, params[:return_to]) %>
       <% is_lunchflow = config[:key] == "lunchflow" %>
 
