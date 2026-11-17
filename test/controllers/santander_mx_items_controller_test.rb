@@ -109,6 +109,53 @@ class SantanderMxItemsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "santander-test-token", @item.api_token
   end
 
+  test "a url differing only by a trailing slash or /transactions suffix keeps the stored token" do
+    [ "http://parser.test/", "http://parser.test/transactions", "HTTP://parser.test/Transactions/" ].each do |url|
+      patch santander_mx_item_url(@item), params: {
+        santander_mx_item: { name: "Renamed", base_url: url, api_token: "" }
+      }
+
+      assert_redirected_to settings_providers_path
+      @item.reload
+      assert_equal "Renamed", @item.name
+      assert_equal "http://parser.test", @item.base_url
+      assert_equal "santander-test-token", @item.api_token
+    end
+  end
+
+  test "a stored url that still has the /transactions suffix is not a change when resubmitted clean" do
+    @item.update_column(:base_url, "http://parser.test/transactions")
+
+    patch santander_mx_item_url(@item), params: {
+      santander_mx_item: { name: "Renamed", base_url: "http://parser.test", api_token: "" }
+    }
+
+    @item.reload
+    assert_equal "Renamed", @item.name
+    assert_equal "santander-test-token", @item.api_token
+  end
+
+  test "a different host or path still requires the token even with a /transactions suffix" do
+    [ "http://attacker.test/transactions", "http://parser.test/other" ].each do |url|
+      patch santander_mx_item_url(@item), params: {
+        santander_mx_item: { name: "Renamed", base_url: url, api_token: "" }
+      }, as: :turbo_stream
+
+      assert_includes response.body, I18n.t("santander_mx_items.update.base_url_requires_token")
+      assert_equal "http://parser.test", @item.reload.base_url
+    end
+  end
+
+  test "create with the full endpoint url saves the service root" do
+    @item.update!(scheduled_for_deletion: true)
+
+    post santander_mx_items_url, params: {
+      santander_mx_item: { name: "Cards", base_url: "https://h.example.com/santander/transactions", api_token: "tok" }
+    }
+
+    assert_equal "https://h.example.com/santander", SantanderMxItem.order(:created_at).last.base_url
+  end
+
   test "changing the url without a new token is refused and changes nothing" do
     patch santander_mx_item_url(@item), params: {
       santander_mx_item: { name: "Renamed", base_url: "http://attacker.test", api_token: "" }

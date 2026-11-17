@@ -28,7 +28,7 @@ class SantanderMxItemsController < ApplicationController
     end
 
     Current.family.create_santander_mx_item!(
-      base_url: attributes[:base_url].to_s.strip,
+      base_url: Provider::SantanderMx.normalize_base_url(attributes[:base_url]),
       api_token: token,
       item_name: attributes[:name].presence,
       sync_start_date: attributes[:sync_start_date].presence
@@ -45,7 +45,8 @@ class SantanderMxItemsController < ApplicationController
     rotated_token = attributes[:api_token].present?
 
     # Otherwise an admin could point the stored bearer token at a host they control.
-    if !rotated_token && attributes.key?(:base_url) && attributes[:base_url] != @santander_mx_item.base_url
+    if !rotated_token && attributes.key?(:base_url) &&
+       attributes[:base_url] != Provider::SantanderMx.normalize_base_url(@santander_mx_item.base_url)
       render_provider_panel("santander_mx", alert: t(".base_url_requires_token"))
       return
     end
@@ -171,11 +172,11 @@ class SantanderMxItemsController < ApplicationController
       params.require(:santander_mx_item).permit(:name, :base_url, :api_token, :sync_start_date)
     end
 
-    # A blank token field keeps the token already on file. The URL is stripped as create does,
-    # so stray whitespace is not a change.
+    # A blank token field keeps the token already on file. The URL is normalised as create does,
+    # so whitespace, a trailing slash or a `/transactions` suffix is not a change.
     def update_params
       permitted = santander_mx_item_params
-      permitted = permitted.merge(base_url: permitted[:base_url].to_s.strip) if permitted.key?(:base_url)
+      permitted = permitted.merge(base_url: Provider::SantanderMx.normalize_base_url(permitted[:base_url])) if permitted.key?(:base_url)
       token = permitted[:api_token].to_s.strip
 
       token.present? ? permitted.merge(api_token: token) : permitted.except(:api_token)

@@ -20,6 +20,19 @@ class SantanderMxItemTest < ActiveSupport::TestCase
     end
   end
 
+  test "saving normalises the base_url to the service root" do
+    @item.update!(base_url: " https://host/santander/transactions/ ")
+
+    assert_equal "https://host/santander", @item.reload.base_url
+  end
+
+  test "a base_url with only a /transactions path or no host is still rejected" do
+    [ "/transactions", "http:///transactions", "   " ].each do |url|
+      @item.base_url = url
+      assert_not @item.valid?, "expected #{url.inspect} to be invalid"
+    end
+  end
+
   test "requires an api_token on create" do
     item = families(:dylan_family).santander_mx_items.new(name: "Santander MX", base_url: "http://parser.test")
     assert_not item.valid?

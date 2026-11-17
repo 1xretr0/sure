@@ -9,6 +9,8 @@ class SantanderMxItem < ApplicationRecord
 
   encrypts :api_token if encryption_ready?
 
+  normalizes :base_url, with: ->(url) { Provider::SantanderMx.normalize_base_url(url) }
+
   belongs_to :family
   has_many :santander_mx_accounts, dependent: :destroy
   has_many :accounts, through: :santander_mx_accounts

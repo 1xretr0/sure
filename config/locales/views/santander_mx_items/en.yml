@@ -64,7 +64,8 @@ en:
       connection_name_label: Connection name
       connection_name_placeholder: Santander MX
       base_url_label: Parser service URL
-      base_url_placeholder: https://santander-parser.example.com
+      base_url_placeholder: https://parser.example.com/santander
+      base_url_hint: The root of the parser service, without /transactions. Sure adds that path itself.
       api_token_label: API token
       api_token_placeholder: Paste the parser service API token
       keep_token_placeholder: Leave blank to keep the current token

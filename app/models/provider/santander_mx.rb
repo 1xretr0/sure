@@ -38,10 +38,17 @@ class Provider::SantanderMx < Provider
 
   OPERATION = "GET transactions"
 
+  # Users paste either the service root or the full `.../transactions` endpoint; the client
+  # appends the path itself, so both reduce to the root. Only a trailing segment is removed
+  # (not `/my-transactions`, `/a/transactions/b` or the host of `https://transactions`).
+  def self.normalize_base_url(url)
+    url.to_s.strip.sub(%r{(?:(?<=[^/:])/+transactions)?/*\z}i, "")
+  end
+
   attr_reader :base_url
 
   def initialize(base_url:, api_token:)
-    @base_url = base_url.to_s.strip
+    @base_url = self.class.normalize_base_url(base_url)
     @api_token = api_token.to_s.strip
 
     if @base_url.blank? || @api_token.blank?
@@ -54,7 +61,7 @@ class Provider::SantanderMx < Provider
   def get_transactions(since:)
     body = with_retries(OPERATION) do
       response = self.class.get(
-        "#{base_url.chomp('/')}/transactions",
+        "#{base_url}/transactions",
         query: { since: since.iso8601 },
         headers: request_headers
       )

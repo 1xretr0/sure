@@ -51,6 +51,39 @@ class Provider::SantanderMxTest < ActiveSupport::TestCase
     assert_equal [ "http://parser.test/transactions", "https://h/santander/transactions" ], urls
   end
 
+  test "normalize_base_url reduces a pasted URL to the service root" do
+    {
+      "https://h" => "https://h",
+      "https://h/" => "https://h",
+      "https://h///" => "https://h",
+      "https://h/transactions" => "https://h",
+      "https://h/transactions/" => "https://h",
+      "https://h/Transactions//" => "https://h",
+      "  https://h/santander/transactions \n" => "https://h/santander",
+      "https://h/santander/" => "https://h/santander",
+      "https://h/my-transactions" => "https://h/my-transactions",
+      "https://h/a/transactions/b" => "https://h/a/transactions/b",
+      "https://transactions" => "https://transactions",
+      "" => "",
+      nil => ""
+    }.each do |input, expected|
+      assert_equal expected, Provider::SantanderMx.normalize_base_url(input), "for #{input.inspect}"
+    end
+  end
+
+  test "a base_url that already ends in /transactions is requested once, not doubled" do
+    urls = []
+
+    Provider::SantanderMx.stub(:get, ->(url, query:, headers:) {
+      urls << url
+      FakeResponse.new(code: 200, message: "OK", body: BODY)
+    }) do
+      provider(base_url: "https://h/santander/transactions").get_transactions(since: Date.current)
+    end
+
+    assert_equal [ "https://h/santander/transactions" ], urls
+  end
+
   test "requires base_url and api_token" do
     [ { base_url: "", api_token: "tok" }, { base_url: "http://x", api_token: " " } ].each do |args|
       error = assert_raises(Provider::SantanderMx::Error) { Provider::SantanderMx.new(**args) }
