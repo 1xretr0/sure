@@ -34,9 +34,10 @@ class Account::CurrentBalanceManager
   end
 
   # `date` is the day the balance describes, for a provider whose figures are
-  # as of a statement rather than of this moment. It only applies to a linked
-  # account: a manual one has no statement, and its strategies reconcile against
-  # today by design.
+  # as of a statement rather than of this moment. It only applies when the
+  # account's balance comes from its provider (`balance_from_provider?`). A manual
+  # account, or a linked one whose provider reports no balance, is ledger-driven
+  # and reconciles against today.
   def set_current_balance(balance, date: nil)
     if account.balance_from_provider?
       set_current_balance_for_linked_account(balance, date || Date.current)
@@ -63,7 +64,7 @@ class Account::CurrentBalanceManager
       @reconciliation_manager ||= Account::ReconciliationManager.new(account)
     end
 
-    # Manual accounts do not manage the `current_anchor` valuation (otherwise, user would need to continually update it, which is bad UX)
+    # Ledger-driven accounts (manual, or linked to a provider that reports no balance) do not manage the `current_anchor` valuation (otherwise, user would need to continually update it, which is bad UX)
     # Instead, we use a combination of "auto-update strategies" to set the current balance according to the user's intent.
     #
     # The "auto-update strategies" are:
@@ -96,9 +97,9 @@ class Account::CurrentBalanceManager
       Result.new(success?: result.success?, changes_made?: true, error: result.error)
     end
 
-    # Linked accounts manage "current balance" via the special `current_anchor` valuation.
-    # This is NOT a user-facing feature, and is primarily used in "processors" while syncing
-    # linked account data (e.g. via Plaid)
+    # Accounts whose balance comes from their provider manage "current balance" via the special
+    # `current_anchor` valuation. This is NOT a user-facing feature, and is primarily used in
+    # "processors" while syncing linked account data (e.g. via Plaid)
     #
     # Before overwriting a stale (previous-day) current_anchor, we convert it to a
     # reconciliation valuation. This preserves the API-reported balance as a historical
