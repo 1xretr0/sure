@@ -1,6 +1,18 @@
 require "test_helper"
 
 class Provider::SantanderMxAdapterTest < ActiveSupport::TestCase
+  include ProviderAdapterTestInterface
+
+  # The shared contract every adapter must meet, including the calls the app makes on a linked
+  # account (institution lookups, item, sync_path, raw_payload, metadata).
+  def adapter
+    Provider::Factory.create_adapter(santander_mx_accounts(:gold))
+  end
+
+  test_provider_adapter_interface
+  test_syncable_interface
+  test_institution_metadata_interface
+
   test "is registered for SantanderMxAccount" do
     assert_instance_of Provider::SantanderMxAdapter, Provider::Factory.create_adapter(santander_mx_accounts(:gold))
   end
@@ -40,5 +52,20 @@ class Provider::SantanderMxAdapterTest < ActiveSupport::TestCase
     santander_mx_accounts(:gold).ensure_account_provider!(account)
 
     refute account.reload.balance_from_provider?
+  end
+
+  test "institution metadata comes from the provider registry" do
+    adapter = Provider::Factory.create_adapter(santander_mx_accounts(:gold))
+
+    assert_equal "santander.com.mx", adapter.institution_domain
+    assert_equal "Santander México", adapter.institution_name
+    assert_equal "https://www.santander.com.mx", adapter.institution_url
+    assert_equal "#ec0000", adapter.institution_color
+    assert_nil adapter.logo_url
+    assert_equal(
+      { domain: "santander.com.mx", name: "Santander México", url: "https://www.santander.com.mx", color: "#ec0000" },
+      adapter.institution_metadata
+    )
+    assert_equal adapter.institution_metadata, adapter.metadata[:institution]
   end
 end

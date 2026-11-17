@@ -1973,9 +1973,6 @@ class AccountsControllerTest < ActionDispatch::IntegrationTest
     linked.account_shares.create!(user: member, permission: "read_only")
     santander_mx_accounts(:gold).ensure_account_provider!(linked)
     item.santander_mx_accounts.create!(name: "SANTANDER WAITING", last4: "9876")
-    # TODO: drop once Provider::SantanderMxAdapter includes Provider::InstitutionMetadata; without
-    # it any page that renders a Santander-linked account raises on the institution lookups.
-    Account.any_instance.stubs(institution_domain: nil, institution_name: nil, logo_url: nil)
 
     get accounts_url
     assert_select "##{dom_id(item)}", text: /SANTANDER WAITING/

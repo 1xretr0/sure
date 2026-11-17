@@ -2,6 +2,7 @@
 
 class Provider::SantanderMxAdapter < Provider::Base
   include Provider::Syncable
+  include Provider::InstitutionMetadata
 
   Provider::Factory.register("SantanderMxAccount", self)
 
@@ -45,8 +46,36 @@ class Provider::SantanderMxAdapter < Provider::Base
     provider_account.santander_mx_item
   end
 
+  # The bank is fixed, so the brand comes from the provider registry. No logo_url: Brandfetch
+  # resolves the logo from the domain.
+  def institution_domain
+    brand[:domain]
+  end
+
+  def institution_name
+    brand[:name]
+  end
+
+  def institution_url
+    "https://www.#{institution_domain}"
+  end
+
+  def institution_color
+    brand[:logo_color]
+  end
+
+  # The account stores only its raw transactions, not a provider payload.
+  def raw_payload
+    nil
+  end
+
   # Statements carry no balance, so the ledger drives it.
   def reports_balance?
     false
   end
+
+  private
+    def brand
+      Provider::Metadata.for(:santander_mx)
+    end
 end
