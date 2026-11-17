@@ -12,6 +12,7 @@ class SantanderMxItemsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "create makes a connection and enqueues a sync" do
+    @item.update!(scheduled_for_deletion: true)
     SyncJob.expects(:perform_later).with { |sync| sync.syncable.is_a?(SantanderMxItem) }.once
 
     assert_difference "SantanderMxItem.count", 1 do
@@ -43,6 +44,7 @@ class SantanderMxItemsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "create with an invalid url shows the validation error" do
+    @item.update!(scheduled_for_deletion: true)
     assert_no_difference "SantanderMxItem.count" do
       post santander_mx_items_url, params: {
         santander_mx_item: { name: "Cards", base_url: "not a url", api_token: "s3cret-xyz" }
@@ -55,14 +57,6 @@ class SantanderMxItemsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "a rejected create or update never echoes a submitted token into the re-rendered panel" do
-    assert_no_difference "SantanderMxItem.count" do
-      post santander_mx_items_url, params: {
-        santander_mx_item: { name: "Cards", base_url: "not a url", api_token: "s3cret-xyz" }
-      }, as: :turbo_stream
-    end
-    assert_turbo_stream status: :unprocessable_entity, action: "replace", target: "santander-mx-providers-panel"
-    assert_not_includes response.body, "s3cret-xyz"
-
     patch santander_mx_item_url(@item), params: {
       santander_mx_item: { base_url: "not a url", api_token: "s3cret-rotated" }
     }, as: :turbo_stream
@@ -70,6 +64,38 @@ class SantanderMxItemsControllerTest < ActionDispatch::IntegrationTest
     [ "s3cret-rotated", "santander-test-token" ].each { |token| assert_not_includes response.body, token }
     assert_equal "http://parser.test", @item.reload.base_url
     assert_equal "santander-test-token", @item.api_token
+
+    @item.update!(scheduled_for_deletion: true)
+    assert_no_difference "SantanderMxItem.count" do
+      post santander_mx_items_url, params: {
+        santander_mx_item: { name: "Cards", base_url: "not a url", api_token: "s3cret-xyz" }
+      }, as: :turbo_stream
+    end
+    assert_turbo_stream status: :unprocessable_entity, action: "replace", target: "santander-mx-providers-panel"
+    assert_not_includes response.body, "s3cret-xyz"
+  end
+
+  test "create refuses a second connection for the family" do
+    assert_no_difference "SantanderMxItem.count" do
+      post santander_mx_items_url,
+           params: { santander_mx_item: { name: "Second", base_url: "https://parser.example.com", api_token: "tok" } },
+           as: :turbo_stream
+    end
+
+    assert_turbo_stream status: :unprocessable_entity, action: "replace", target: "santander-mx-providers-panel"
+    assert_includes response.body, ERB::Util.html_escape(I18n.t("santander_mx_items.create.already_connected"))
+  end
+
+  test "create is allowed again once the connection is scheduled for deletion" do
+    @item.update!(scheduled_for_deletion: true)
+
+    assert_difference "SantanderMxItem.count", 1 do
+      post santander_mx_items_url, params: {
+        santander_mx_item: { name: "Second", base_url: "https://parser.example.com", api_token: "tok" }
+      }
+    end
+
+    assert_redirected_to settings_providers_path
   end
 
   test "update with a blank token and an unchanged url keeps the stored token" do
@@ -359,5 +385,15 @@ class SantanderMxItemsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, "santander-mx-providers-panel"
     assert_not_includes response.body, "santander-test-token"
+  end
+
+  test "the panel hides the add connection form while a connection exists and shows it otherwise" do
+    get connect_form_settings_providers_path(provider_key: "santander_mx")
+    assert_select "#santander-mx-providers-panel form[action=?]", santander_mx_item_path(@item), minimum: 1
+    assert_select "#santander-mx-providers-panel form[action=?]", santander_mx_items_path, count: 0
+
+    @item.update!(scheduled_for_deletion: true)
+    get connect_form_settings_providers_path(provider_key: "santander_mx")
+    assert_select "#santander-mx-providers-panel form[action=?]", santander_mx_items_path, count: 1
   end
 end

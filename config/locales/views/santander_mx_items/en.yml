@@ -34,6 +34,7 @@ en:
     create:
       success: Santander MX connection added. The first sync has started.
       token_required: Enter the API token of your statement parser service.
+      already_connected: Santander MX is already connected. Update or disconnect the existing connection instead.
     update:
       success: Santander MX connection updated.
       base_url_requires_token: Enter the API token again to change the parser service URL.

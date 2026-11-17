@@ -21,6 +21,12 @@ class SantanderMxItemsController < ApplicationController
       return
     end
 
+    # Two connections would read the same parser and import every entry twice.
+    if Current.family.santander_mx_items.active.exists?
+      render_provider_panel("santander_mx", alert: t(".already_connected"))
+      return
+    end
+
     Current.family.create_santander_mx_item!(
       base_url: attributes[:base_url].to_s.strip,
       api_token: token,

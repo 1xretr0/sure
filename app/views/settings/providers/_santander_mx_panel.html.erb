@@ -106,43 +106,42 @@
     </div>
   <% end %>
 
-  <% santander_mx_item = Current.family.santander_mx_items.build(name: t("santander_mx_items.provider_panel.default_connection_name")) %>
-  <% if active_items.any? %>
-    <%= render "settings/providers/add_connection_heading", label: t("santander_mx_items.provider_panel.add_connection") %>
-  <% end %>
+  <%# One connection per family: SantanderMxItemsController#create refuses a second. %>
+  <% if active_items.none? %>
+    <% santander_mx_item = Current.family.santander_mx_items.build(name: t("santander_mx_items.provider_panel.default_connection_name")) %>
+    <%= styled_form_with model: santander_mx_item,
+                         url: santander_mx_items_path,
+                         scope: :santander_mx_item,
+                         method: :post,
+                         data: { turbo: true },
+                         class: "space-y-3" do |form| %>
+      <%= form.text_field :name,
+                          label: t("santander_mx_items.provider_panel.connection_name_label"),
+                          placeholder: t("santander_mx_items.provider_panel.connection_name_placeholder") %>
 
-  <%= styled_form_with model: santander_mx_item,
-                       url: santander_mx_items_path,
-                       scope: :santander_mx_item,
-                       method: :post,
-                       data: { turbo: true },
-                       class: "space-y-3" do |form| %>
-    <%= form.text_field :name,
-                        label: t("santander_mx_items.provider_panel.connection_name_label"),
-                        placeholder: t("santander_mx_items.provider_panel.connection_name_placeholder") %>
+      <%= form.url_field :base_url,
+                         label: t("santander_mx_items.provider_panel.base_url_label"),
+                         placeholder: t("santander_mx_items.provider_panel.base_url_placeholder"),
+                         value: nil %>
 
-    <%= form.url_field :base_url,
-                       label: t("santander_mx_items.provider_panel.base_url_label"),
-                       placeholder: t("santander_mx_items.provider_panel.base_url_placeholder"),
-                       value: nil %>
+      <%= form.password_field :api_token,
+                              label: t("santander_mx_items.provider_panel.api_token_label"),
+                              placeholder: t("santander_mx_items.provider_panel.api_token_placeholder"),
+                              value: nil %>
 
-    <%= form.password_field :api_token,
-                            label: t("santander_mx_items.provider_panel.api_token_label"),
-                            placeholder: t("santander_mx_items.provider_panel.api_token_placeholder"),
-                            value: nil %>
+      <%= form.date_field :sync_start_date,
+                          label: t("santander_mx_items.provider_panel.sync_start_date_label"),
+                          value: Date.current - 90,
+                          max: Date.current %>
 
-    <%= form.date_field :sync_start_date,
-                        label: t("santander_mx_items.provider_panel.sync_start_date_label"),
-                        value: Date.current - 90,
-                        max: Date.current %>
+      <p class="text-xs text-secondary"><%= t("santander_mx_items.provider_panel.sync_start_date_hint") %></p>
 
-    <p class="text-xs text-secondary"><%= t("santander_mx_items.provider_panel.sync_start_date_hint") %></p>
-
-    <div class="flex justify-end">
-      <%= render DS::Button.new(
-        text: t("santander_mx_items.provider_panel.add_connection"),
-        type: "submit"
-      ) %>
-    </div>
+      <div class="flex justify-end">
+        <%= render DS::Button.new(
+          text: t("santander_mx_items.provider_panel.add_connection"),
+          type: "submit"
+        ) %>
+      </div>
+    <% end %>
   <% end %>
 </div>
