@@ -27,6 +27,20 @@ class SantanderMxItem < ApplicationRecord
     base_url.present? && api_token.present?
   end
 
+  # The bank is fixed, so the brand comes from the provider registry (also read by the adapter).
+  def institution_name
+    Provider::Metadata.for(:santander_mx)[:name]
+  end
+  alias_method :institution_display_name, :institution_name
+
+  def institution_domain
+    Provider::Metadata.for(:santander_mx)[:domain]
+  end
+
+  def institution_url
+    "https://www.#{institution_domain}"
+  end
+
   # Fetch the latest rows from the statement parser. Returns the importer's result hash.
   def import_latest_santander_mx_data
     provider = santander_mx_provider

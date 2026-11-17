@@ -51,30 +51,38 @@ class SantanderMxItem::SyncerTest < ActiveSupport::TestCase
   end
 
   test "one account failing to process does not stop the others and fails the sync with the stage" do
-    other = @item.santander_mx_accounts.create!(
-      name: "SANTANDER LIKEU", currency: "MXN",
-      raw_transactions_payload: { "m1" => { "id" => "m1", "date" => "2026-11-03", "amount" => "50.00", "currency" => "MXN", "type" => "purchase", "description" => "STORE" } }
-    )
+    payload = { "m1" => { "id" => "m1", "date" => "2026-11-03", "amount" => "50.00", "currency" => "MXN", "type" => "purchase", "description" => "STORE" } }
+    @santander_account.update!(raw_transactions_payload: payload)
+    other = @item.santander_mx_accounts.create!(name: "SANTANDER LIKEU", currency: "MXN", raw_transactions_payload: payload)
     link_account
     other_account = Account.create!(family: @item.family, name: "Likeu", accountable: CreditCard.new, balance: 0, currency: "MXN")
     other.ensure_account_provider!(other_account)
-    healthy = SantanderMxAccount::Transactions::Processor.new(other)
-    failing = stub("failing processor")
-    failing.stubs(:process).raises("boom")
-    SantanderMxAccount::Transactions::Processor.stubs(:new).with(@santander_account).returns(failing)
-    SantanderMxAccount::Transactions::Processor.stubs(:new).with(other).returns(healthy)
 
-    sync = Sync.create!(syncable: @item)
-    error = assert_raises(SantanderMxItem::Syncer::SyncError) { SantanderMxItem::Syncer.new(@item.reload).perform_sync(sync) }
+    real = { @santander_account => SantanderMxAccount::Transactions::Processor.new(@santander_account),
+             other => SantanderMxAccount::Transactions::Processor.new(other) }
 
-    assert_match "Santander MX account processing", error.message
-    assert_equal [ "sync_error" ], error.sync_errors.map { |e| e[:category] }
-    assert_equal 1, other_account.entries.count
-    entry = DebugLogEntry.where(provider_key: "santander_mx", message: "Failed to process account").sole
-    assert_equal @santander_account.account_provider, entry.account_provider
-    assert_equal @item.family, entry.family
-    assert_not_includes entry.to_json, @item.api_token
-    assert_not_includes entry.to_json, @item.base_url
+    # process_accounts has no defined order, so each product takes a turn failing: in one of
+    # the two runs the failing product is processed first, whichever way the rows come back.
+    [ [ @santander_account, other ], [ other, @santander_account ] ].each do |failing_account, healthy_account|
+      healthy_account.current_account.entries.destroy_all
+      DebugLogEntry.where(provider_key: "santander_mx").delete_all
+      failing = stub("failing processor")
+      failing.stubs(:process).raises("boom")
+      SantanderMxAccount::Transactions::Processor.stubs(:new).with(failing_account).returns(failing)
+      SantanderMxAccount::Transactions::Processor.stubs(:new).with(healthy_account).returns(real[healthy_account])
+
+      sync = Sync.create!(syncable: @item)
+      error = assert_raises(SantanderMxItem::Syncer::SyncError) { SantanderMxItem::Syncer.new(@item.reload).perform_sync(sync) }
+
+      assert_match "Santander MX account processing", error.message
+      assert_equal [ "sync_error" ], error.sync_errors.map { |e| e[:category] }
+      assert_equal 1, healthy_account.current_account.entries.count
+      entry = DebugLogEntry.where(provider_key: "santander_mx", message: "Failed to process account").sole
+      assert_equal failing_account.account_provider, entry.account_provider
+      assert_equal @item.family, entry.family
+      assert_not_includes entry.to_json, @item.api_token
+      assert_not_includes entry.to_json, @item.base_url
+    end
   end
 
   test "an unexpected error fails the sync with a neutral message and logs only its class" do

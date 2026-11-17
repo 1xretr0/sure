@@ -19,6 +19,16 @@ class ProviderConnectionStatusTest < ActiveSupport::TestCase
                  registered_registry.sort_by { |entry| entry[:association].to_s }
   end
 
+  test "a Santander MX connection carries its institution name and domain" do
+    item = santander_mx_items(:one)
+
+    connection = ProviderConnectionStatus.for_family(item.family).find { |c| c[:provider] == "santander_mx" && c[:id] == item.id }
+
+    assert_equal "Santander México", connection[:institution][:name]
+    assert_equal "santander.com.mx", connection[:institution][:domain]
+    assert_equal "https://www.santander.com.mx", connection[:institution][:url]
+  end
+
   test "status summary is computed without calling provider item summary" do
     provider = ProviderConnectionStatus::PROVIDERS.find { |entry| entry[:association] == :mercury_items }
     item = mercury_items(:one)

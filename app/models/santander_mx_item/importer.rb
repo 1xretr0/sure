@@ -67,8 +67,8 @@ class SantanderMxItem::Importer
       by_id = {}
 
       Array(transactions).each do |row|
-        if row.is_a?(Hash) && usable_id?(row["id"]) && row["account"].is_a?(String) && row["account"].strip.present?
-          by_id[row["id"].to_s] = row.merge("account" => row["account"].strip)
+        if row.is_a?(Hash) && usable_id?(row["id"]) && row["account"].is_a?(String) && trim(row["account"]).present?
+          by_id[row["id"].to_s] = row.merge("account" => trim(row["account"]))
         else
           skipped += 1
         end
@@ -87,6 +87,11 @@ class SantanderMxItem::Importer
       end
 
       by_id.values
+    end
+
+    # String#strip leaves a no-break space, which would split one product in two.
+    def trim(name)
+      name.gsub(/\A[[:space:]]+|[[:space:]]+\z/, "")
     end
 
     def usable_id?(id)
@@ -108,11 +113,11 @@ class SantanderMxItem::Importer
 
       # A row whose product changed leaves its old product, so no entry is processed twice.
       santander_mx_item.santander_mx_accounts.reload.each do |account|
-        payload = account.raw_transactions_payload
-        payload = {} unless payload.is_a?(Hash)
+        stored = account.raw_transactions_payload
+        payload = stored.is_a?(Hash) ? stored : {}
         merged = payload.reject { |id, _| incoming_owner[id] && incoming_owner[id] != account.name }
         by_product.fetch(account.name, []).each { |row| merged[row["id"].to_s] = row }
-        account.update!(raw_transactions_payload: merged) if merged != payload
+        account.update!(raw_transactions_payload: merged) if merged != stored
       end
 
       by_product.size

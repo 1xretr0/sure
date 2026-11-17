@@ -44,6 +44,16 @@ class SantanderMxAccount::Transactions::ProcessorTest < ActiveSupport::TestCase
     assert result[:success]
   end
 
+  test "a stored payload that is not a Hash imports nothing and does not fail" do
+    [ [ "x", 1 ], "junk" ].each do |junk|
+      @santander_account.update_column(:raw_transactions_payload, junk)
+
+      result = SantanderMxAccount::Transactions::Processor.new(@santander_account.reload).process
+
+      assert_equal({ success: true, total: 0, imported: 0, skipped: 0, failed: 0, errors: [] }, result)
+    end
+  end
+
   test "an exception while saving counts as failed" do
     @santander_account.update!(raw_transactions_payload: { "m1" => row("m1", "purchase") })
     Account::ProviderImportAdapter.any_instance.stubs(:import_transaction).raises(StandardError, "boom")

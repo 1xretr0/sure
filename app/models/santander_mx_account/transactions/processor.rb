@@ -12,7 +12,8 @@ class SantanderMxAccount::Transactions::Processor
   # declines counts as skipped, never failed: it never becomes usable, so failing on it
   # would fail every later sync.
   def process
-    rows = santander_mx_account.raw_transactions_payload.to_h.values
+    payload = santander_mx_account.raw_transactions_payload
+    rows = payload.is_a?(Hash) ? payload.values : []
 
     imported = skipped = failed = 0
     errors = []

@@ -237,7 +237,7 @@ class SantanderMxItem::ImporterTest < ActiveSupport::TestCase
     end
   end
 
-  test "older rows in a later response do not overwrite a stored last4" do
+  test "a response containing only older rows replaces last4 because the stored value carries no date" do
     recent = row("n", "GOLD", "9999").merge("date" => "2026-11-10")
     old = row("o", "GOLD", "1111").merge("date" => "2026-11-01")
     @provider.stubs(:get_transactions).returns(response([ recent ]))
@@ -245,7 +245,7 @@ class SantanderMxItem::ImporterTest < ActiveSupport::TestCase
     @provider.stubs(:get_transactions).returns(response([ old ]))
     import
 
-    # The stored value is replaced only by a newer row of the next response, as before.
+    # Newest-row selection is per response; the stored last4 has no date, so the older row wins.
     assert_equal "1111", @item.santander_mx_accounts.find_by!(name: "GOLD").last4
   end
 
@@ -364,6 +364,28 @@ class SantanderMxItem::ImporterTest < ActiveSupport::TestCase
     assert_equal 1, result[:accounts_seen]
     assert_equal [ "GOLD" ], @item.santander_mx_accounts.pluck(:name)
     assert_equal %w[a b c], @item.santander_mx_accounts.first.raw_transactions_payload.keys.sort
+  end
+
+  test "a no-break space around a product name does not split the product" do
+    @provider.stubs(:get_transactions).returns(response([ row("a", "GOLD", nil), row("b", "GOLD\u00A0", nil), row("c", "\u00A0GOLD", nil) ]))
+
+    result = import
+
+    assert_equal 1, result[:accounts_seen]
+    assert_equal [ "GOLD" ], @item.santander_mx_accounts.pluck(:name)
+    assert_equal %w[a b c], @item.santander_mx_accounts.first.raw_transactions_payload.keys.sort
+  end
+
+  test "a stored payload that is not a Hash is replaced even when its product gets no rows" do
+    [ [ "x", 1 ], "junk" ].each do |junk|
+      account = @item.santander_mx_accounts.create!(name: "SILENT#{junk.class}")
+      account.update_column(:raw_transactions_payload, junk)
+      @provider.stubs(:get_transactions).returns(response([ row("a", "GOLD", nil) ]))
+
+      import
+
+      assert_equal({}, account.reload.raw_transactions_payload)
+    end
   end
 
   test "rows with a non-string account or an id that is not a string or integer are skipped and logged" do

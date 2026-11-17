@@ -48,17 +48,7 @@ class Provider::SantanderMxAdapter < Provider::Base
 
   # The bank is fixed, so the brand comes from the provider registry. No logo_url: Brandfetch
   # resolves the logo from the domain.
-  def institution_domain
-    brand[:domain]
-  end
-
-  def institution_name
-    brand[:name]
-  end
-
-  def institution_url
-    "https://www.#{institution_domain}"
-  end
+  delegate :institution_domain, :institution_name, :institution_url, to: :item
 
   def institution_color
     brand[:logo_color]

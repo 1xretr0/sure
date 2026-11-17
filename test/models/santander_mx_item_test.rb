@@ -46,6 +46,19 @@ class SantanderMxItemTest < ActiveSupport::TestCase
     assert_equal 1, @item.total_accounts_count
   end
 
+  test "process_accounts succeeds for a linked product whose stored payload is junk" do
+    santander_account = santander_mx_accounts(:gold)
+    santander_account.ensure_account_provider!(
+      Account.create!(family: @item.family, name: "Gold", accountable: CreditCard.new, balance: 0, currency: "MXN")
+    )
+    santander_account.update_column(:raw_transactions_payload, [ "x", 1 ])
+
+    results = @item.process_accounts
+
+    assert_equal [ true ], results.map { |r| r[:success] }
+    assert_equal 0, results.first[:result][:total]
+  end
+
   test "creating an item through the family starts a sync with the default name" do
     family = families(:dylan_family)
     SantanderMxItem.any_instance.expects(:sync_later)
