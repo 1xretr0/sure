@@ -25,7 +25,7 @@ class SantanderMxItem::Importer
     end
   end
 
-  # Returns `{ success: true, accounts_seen:, transactions_seen:, unparsed_count: }` or
+  # Returns `{ success: true, unparsed_count: }` or
   # `{ success: false, error: }`. A failure never moves the cursor.
   def import
     # Taken before the fetch so a sync that crosses midnight re-reads, not skips, that day.
@@ -39,12 +39,12 @@ class SantanderMxItem::Importer
       # A fresh query, because `lock!` on this instance raises when it has unsaved changes.
       SantanderMxItem.lock.find(santander_mx_item.id)
 
-      accounts_seen = store_rows(rows)
+      store_rows(rows)
       log_unparsed(unparsed) if unparsed.any?
       # No validations or dirty attributes: the cursor must move whatever else the item holds.
       santander_mx_item.update_columns(transactions_synced_through: synced_through, status: "good", updated_at: Time.current)
 
-      { success: true, accounts_seen: accounts_seen, transactions_seen: rows.size, unparsed_count: unparsed.size }
+      { success: true, unparsed_count: unparsed.size }
     end
   rescue Provider::SantanderMx::AuthenticationError, Provider::SantanderMx::ReauthorizationRequiredError => e
     santander_mx_item.update_columns(status: "requires_update", updated_at: Time.current)
@@ -98,7 +98,6 @@ class SantanderMxItem::Importer
       (id.is_a?(String) && id.present?) || id.is_a?(Integer)
     end
 
-    # Returns the number of products the response touched.
     def store_rows(rows)
       incoming_owner = rows.to_h { |row| [ row["id"].to_s, row["account"] ] }
       by_product = rows.group_by { |row| row["account"] }
@@ -120,7 +119,6 @@ class SantanderMxItem::Importer
         account.update!(raw_transactions_payload: merged) if merged != stored
       end
 
-      by_product.size
     end
 
     # The value of the newest row (by date, later in the response on a tie) that has one.

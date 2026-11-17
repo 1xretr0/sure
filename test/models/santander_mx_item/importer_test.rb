@@ -49,7 +49,7 @@ class SantanderMxItem::ImporterTest < ActiveSupport::TestCase
 
     result = import
 
-    assert_equal({ success: true, accounts_seen: 2, transactions_seen: 3, unparsed_count: 0 }, result)
+    assert_equal({ success: true, unparsed_count: 0 }, result)
     gold = @item.santander_mx_accounts.find_by!(name: "GOLD")
     assert_equal %w[a b], gold.raw_transactions_payload.keys.sort
     assert_equal "1234", gold.last4
@@ -69,8 +69,7 @@ class SantanderMxItem::ImporterTest < ActiveSupport::TestCase
     @provider.stubs(:get_transactions).returns(response([ row("a", "", nil), row("b", nil, nil), row("c", "GOLD", nil) ]))
 
     assert_difference -> { @item.santander_mx_accounts.count }, 1 do
-      result = import
-      assert_equal 1, result[:transactions_seen]
+      import
     end
     assert_equal 1, DebugLogEntry.where(provider_key: "santander_mx", category: "provider_sync").count
   end
@@ -81,7 +80,6 @@ class SantanderMxItem::ImporterTest < ActiveSupport::TestCase
     result = import
 
     assert result[:success]
-    assert_equal 1, result[:transactions_seen]
     assert_equal %w[c], @item.santander_mx_accounts.find_by!(name: "GOLD").raw_transactions_payload.keys
   end
 
@@ -103,7 +101,7 @@ class SantanderMxItem::ImporterTest < ActiveSupport::TestCase
 
     travel_to Date.new(2026, 12, 1) do
       result = import
-      assert_equal({ success: true, accounts_seen: 0, transactions_seen: 0, unparsed_count: 0 }, result)
+      assert_equal({ success: true, unparsed_count: 0 }, result)
     end
 
     assert_equal Date.new(2026, 12, 1), @item.reload.transactions_synced_through
@@ -359,9 +357,8 @@ class SantanderMxItem::ImporterTest < ActiveSupport::TestCase
   test "product names are stored stripped so spacing variants are one product" do
     @provider.stubs(:get_transactions).returns(response([ row("a", "GOLD", nil), row("b", "GOLD ", nil), row("c", " GOLD", nil) ]))
 
-    result = import
+    import
 
-    assert_equal 1, result[:accounts_seen]
     assert_equal [ "GOLD" ], @item.santander_mx_accounts.pluck(:name)
     assert_equal %w[a b c], @item.santander_mx_accounts.first.raw_transactions_payload.keys.sort
   end
@@ -369,9 +366,8 @@ class SantanderMxItem::ImporterTest < ActiveSupport::TestCase
   test "a no-break space around a product name does not split the product" do
     @provider.stubs(:get_transactions).returns(response([ row("a", "GOLD", nil), row("b", "GOLD\u00A0", nil), row("c", "\u00A0GOLD", nil) ]))
 
-    result = import
+    import
 
-    assert_equal 1, result[:accounts_seen]
     assert_equal [ "GOLD" ], @item.santander_mx_accounts.pluck(:name)
     assert_equal %w[a b c], @item.santander_mx_accounts.first.raw_transactions_payload.keys.sort
   end
@@ -392,9 +388,8 @@ class SantanderMxItem::ImporterTest < ActiveSupport::TestCase
     rows = [ row("a", 123, nil), row("b", { "x" => 1 }, nil), row({ "x" => 1 }, "GOLD", nil), row([ 1 ], "GOLD", nil), row("ok", "GOLD", nil) ]
     @provider.stubs(:get_transactions).returns(response(rows))
 
-    result = import
+    import
 
-    assert_equal 1, result[:transactions_seen]
     assert_equal %w[ok], @item.santander_mx_accounts.find_by!(name: "GOLD").raw_transactions_payload.keys
     assert_equal 1, DebugLogEntry.where(provider_key: "santander_mx", category: "provider_sync").count
   end
@@ -402,9 +397,8 @@ class SantanderMxItem::ImporterTest < ActiveSupport::TestCase
   test "an integer id and the same id as a string are one row" do
     @provider.stubs(:get_transactions).returns(response([ row(1, "GOLD", nil), row("1", "GOLD", nil, amount: "5.00") ]))
 
-    result = import
+    import
 
-    assert_equal 1, result[:transactions_seen]
     assert_equal "5.00", @item.santander_mx_accounts.find_by!(name: "GOLD").raw_transactions_payload["1"]["amount"]
   end
 

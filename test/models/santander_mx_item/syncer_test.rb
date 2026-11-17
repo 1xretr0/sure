@@ -4,7 +4,7 @@ class SantanderMxItem::SyncerTest < ActiveSupport::TestCase
   setup do
     @item = santander_mx_items(:one)
     @santander_account = santander_mx_accounts(:gold)
-    @import_result = { success: true, accounts_seen: 1, transactions_seen: 0, unparsed_count: 0 }
+    @import_result = { success: true, unparsed_count: 0 }
     SantanderMxItem.any_instance.stubs(:import_latest_santander_mx_data).returns(@import_result)
   end
 
