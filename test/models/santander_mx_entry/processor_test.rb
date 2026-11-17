@@ -52,6 +52,14 @@ class SantanderMxEntry::ProcessorTest < ActiveSupport::TestCase
     assert_skipped row("date" => "not a date")
   end
 
+  test "skips a date string too long for Date.parse" do
+    assert_skipped row("date" => "2026-11-03" + " " * 200)
+  end
+
+  test "skips a non-finite amount" do
+    [ "Infinity", "-Infinity", "NaN" ].each { |amount| assert_skipped row("amount" => amount) }
+  end
+
   test "skips a row that is not a hash" do
     [ "junk", 42, nil, [ 1 ] ].each { |junk| assert_skipped junk }
   end

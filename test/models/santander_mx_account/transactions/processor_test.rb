@@ -24,6 +24,19 @@ class SantanderMxAccount::Transactions::ProcessorTest < ActiveSupport::TestCase
     assert_equal({ success: true, total: 2, imported: 1, skipped: 1, failed: 0, errors: [] }, result)
   end
 
+  test "an over-long date or a non-finite amount is skipped, not failed" do
+    @santander_account.update!(raw_transactions_payload: {
+      "m1" => row("m1", "purchase"),
+      "long" => row("long", "purchase", date: "2026-11-03" + " " * 200),
+      "inf" => row("inf", "purchase", amount: "Infinity"),
+      "nan" => row("nan", "purchase", amount: "NaN")
+    })
+
+    result = SantanderMxAccount::Transactions::Processor.new(@santander_account).process
+
+    assert_equal({ success: true, total: 4, imported: 1, skipped: 3, failed: 0, errors: [] }, result)
+  end
+
   test "skips rows that are not hashes without failing" do
     @santander_account.update!(raw_transactions_payload: {
       "m1" => row("m1", "purchase"),

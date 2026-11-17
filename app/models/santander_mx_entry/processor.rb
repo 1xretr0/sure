@@ -54,7 +54,9 @@ class SantanderMxEntry::Processor
     def amount
       return @amount if defined?(@amount)
 
-      @amount = SIGNS.fetch(type) * BigDecimal(row[:amount].to_s).abs
+      # BigDecimal accepts "Infinity" and "NaN", which cannot be stored.
+      magnitude = BigDecimal(row[:amount].to_s).abs
+      @amount = magnitude.finite? ? SIGNS.fetch(type) * magnitude : nil
     rescue ArgumentError, KeyError
       @amount = nil
     end
@@ -64,7 +66,8 @@ class SantanderMxEntry::Processor
       return @date if defined?(@date)
 
       @date = Date.parse(row[:date].to_s)
-    rescue Date::Error
+    rescue ArgumentError
+      # Date::Error is a subclass; an over-long string raises a plain ArgumentError.
       @date = nil
     end
 
