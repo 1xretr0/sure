@@ -18,17 +18,4 @@ class SantanderMxAccount < ApplicationRecord
   def current_account
     account
   end
-
-  # Idempotently create or update the AccountProvider link.
-  def ensure_account_provider!(linked_account)
-    return nil unless linked_account
-
-    provider = account_provider || build_account_provider
-    provider.account = linked_account
-    provider.save!
-
-    # Reload to clear the cached nil.
-    reload_account_provider
-    account_provider
-  end
 end

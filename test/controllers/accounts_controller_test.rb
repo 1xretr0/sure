@@ -1971,7 +1971,7 @@ class AccountsControllerTest < ActionDispatch::IntegrationTest
     linked.update!(owner: @user)
     linked.account_shares.destroy_all
     linked.account_shares.create!(user: member, permission: "read_only")
-    santander_mx_accounts(:gold).ensure_account_provider!(linked)
+    AccountProvider.create!(account: linked, provider: santander_mx_accounts(:gold))
     item.santander_mx_accounts.create!(name: "SANTANDER WAITING", last4: "9876")
 
     get accounts_url

@@ -10,7 +10,7 @@ class SantanderMxEntry::ProcessorTest < ActiveSupport::TestCase
       balance: 0,
       currency: "MXN"
     )
-    @santander_account.ensure_account_provider!(@account)
+    AccountProvider.create!(account: @account, provider: @santander_account)
   end
 
   test "books a purchase as an outflow" do

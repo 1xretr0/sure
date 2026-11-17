@@ -38,7 +38,7 @@ class SantanderMxItemTest < ActiveSupport::TestCase
     assert_equal 0, @item.linked_accounts_count
     assert_equal 1, @item.unlinked_accounts_count
 
-    santander_mx_accounts(:gold).ensure_account_provider!(accounts(:depository))
+    AccountProvider.create!(account: accounts(:depository), provider: santander_mx_accounts(:gold))
     @item.reload
 
     assert_equal 1, @item.linked_accounts_count
@@ -48,9 +48,8 @@ class SantanderMxItemTest < ActiveSupport::TestCase
 
   test "process_accounts succeeds for a linked product whose stored payload is junk" do
     santander_account = santander_mx_accounts(:gold)
-    santander_account.ensure_account_provider!(
-      Account.create!(family: @item.family, name: "Gold", accountable: CreditCard.new, balance: 0, currency: "MXN")
-    )
+    account = Account.create!(family: @item.family, name: "Gold", accountable: CreditCard.new, balance: 0, currency: "MXN")
+    AccountProvider.create!(account: account, provider: santander_account)
     santander_account.update_column(:raw_transactions_payload, [ "x", 1 ])
 
     results = @item.process_accounts

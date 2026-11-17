@@ -36,7 +36,7 @@ class SantanderMxLinkedAccountPagesTest < ActionDispatch::IntegrationTest
 
   test "syncing and unlinking a linked account use the adapter without error" do
     account = accounts(:depository)
-    @santander_account.ensure_account_provider!(account)
+    AccountProvider.create!(account: account, provider: @santander_account)
 
     assert_enqueued_with(job: SyncJob) { post sync_account_path(account) }
     assert_redirected_to account_path(account)
@@ -48,7 +48,7 @@ class SantanderMxLinkedAccountPagesTest < ActionDispatch::IntegrationTest
 
   private
     def assert_linked_account_pages_render(account, edit_path)
-      @santander_account.ensure_account_provider!(account)
+      AccountProvider.create!(account: account, provider: @santander_account)
       @santander_account.update!(raw_transactions_payload: {
         "m1" => row("m1", "purchase", amount: 250.0),
         "m2" => row("m2", "transfer_in", amount: 100.0)

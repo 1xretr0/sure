@@ -13,7 +13,7 @@ class SantanderMxAccountTest < ActiveSupport::TestCase
     gold = santander_mx_accounts(:gold)
     assert_includes SantanderMxAccount.unlinked, gold
 
-    gold.ensure_account_provider!(accounts(:depository))
+    AccountProvider.create!(account: accounts(:depository), provider: gold)
     assert_not_includes SantanderMxAccount.unlinked, gold
     assert_equal accounts(:depository), gold.current_account
   end

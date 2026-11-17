@@ -49,7 +49,7 @@ class Provider::SantanderMxAdapterTest < ActiveSupport::TestCase
 
   test "a Santander-linked account has ledger-driven balances" do
     account = accounts(:credit_card)
-    santander_mx_accounts(:gold).ensure_account_provider!(account)
+    AccountProvider.create!(account: account, provider: santander_mx_accounts(:gold))
 
     refute account.reload.balance_from_provider?
   end

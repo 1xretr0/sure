@@ -56,7 +56,7 @@ class SantanderMxItem::SyncerTest < ActiveSupport::TestCase
     other = @item.santander_mx_accounts.create!(name: "SANTANDER LIKEU", currency: "MXN", raw_transactions_payload: payload)
     link_account
     other_account = Account.create!(family: @item.family, name: "Likeu", accountable: CreditCard.new, balance: 0, currency: "MXN")
-    other.ensure_account_provider!(other_account)
+    AccountProvider.create!(account: other_account, provider: other)
 
     real = { @santander_account => SantanderMxAccount::Transactions::Processor.new(@santander_account),
              other => SantanderMxAccount::Transactions::Processor.new(other) }
@@ -114,7 +114,7 @@ class SantanderMxItem::SyncerTest < ActiveSupport::TestCase
     def link_account
       Account.create!(
         family: @item.family, name: "Santander Gold", accountable: CreditCard.new, balance: 0, currency: "MXN"
-      ).tap { |account| @santander_account.ensure_account_provider!(account) }
+      ).tap { |account| AccountProvider.create!(account: account, provider: @santander_account) }
     end
 
     def sync_item

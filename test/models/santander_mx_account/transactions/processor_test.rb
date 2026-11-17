@@ -10,7 +10,7 @@ class SantanderMxAccount::Transactions::ProcessorTest < ActiveSupport::TestCase
       balance: 0,
       currency: "MXN"
     )
-    @santander_account.ensure_account_provider!(account)
+    AccountProvider.create!(account: account, provider: @santander_account)
   end
 
   test "counts imported and skipped rows and stays successful" do

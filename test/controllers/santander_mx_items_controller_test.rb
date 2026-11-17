@@ -168,7 +168,7 @@ class SantanderMxItemsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "destroy unlinks accounts and schedules the connection for deletion" do
-    @product.ensure_account_provider!(accounts(:depository))
+    AccountProvider.create!(account: accounts(:depository), provider: @product)
     DestroyJob.expects(:perform_later).with(@item).once
 
     delete santander_mx_item_url(@item)
@@ -194,7 +194,7 @@ class SantanderMxItemsControllerTest < ActionDispatch::IntegrationTest
 
   test "select_existing_account lists only unlinked products" do
     @item.santander_mx_accounts.create!(name: "SANTANDER PLATINUM", currency: "MXN")
-    @product.ensure_account_provider!(accounts(:connected))
+    AccountProvider.create!(account: accounts(:connected), provider: @product)
 
     get select_existing_account_santander_mx_items_url(
       santander_mx_item_id: @item.id, account_id: accounts(:depository).id
@@ -221,7 +221,7 @@ class SantanderMxItemsControllerTest < ActionDispatch::IntegrationTest
 
   test "link_existing_account refuses an account already linked" do
     other = santander_mx_accounts(:gold).dup.tap { |p| p.update!(name: "OTHER") }
-    other.ensure_account_provider!(accounts(:depository))
+    AccountProvider.create!(account: accounts(:depository), provider: other)
 
     assert_no_difference "AccountProvider.count" do
       post link_existing_account_santander_mx_items_url, params: {
@@ -260,7 +260,7 @@ class SantanderMxItemsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "link_existing_account refuses a product already linked" do
-    @product.ensure_account_provider!(accounts(:connected))
+    AccountProvider.create!(account: accounts(:connected), provider: @product)
 
     assert_no_difference "AccountProvider.count" do
       post link_existing_account_santander_mx_items_url, params: {
