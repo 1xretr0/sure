@@ -29,7 +29,7 @@ en:
       account_processing_failed: Could not sync Santander MX account
       account_sync_schedule_failed: Could not schedule Santander MX account sync
       unauthorized: The Santander MX service rejected the API token. Update the connection settings.
-      sync_failed: Could not reach the Santander MX service. Try again later.
+      sync_failed: The Santander MX sync failed. Try again later, and check the debug log if it keeps failing.
   santander_mx_items:
     create:
       success: Santander MX connection added. The first sync has started.

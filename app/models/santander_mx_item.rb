@@ -38,7 +38,11 @@ class SantanderMxItem < ApplicationRecord
     SantanderMxItem::Importer.new(self, provider: provider).import
   ensure
     # A rolled-back import leaves dirty cursor/status values on this instance.
-    reload
+    begin
+      reload
+    rescue ActiveRecord::RecordNotFound
+      # The item was destroyed mid-sync; keep the import's own result or error.
+    end
   end
 
   # Process each linked, visible Santander account, returning a per-account result array.

@@ -54,4 +54,26 @@ class SantanderMxItemTest < ActiveSupport::TestCase
 
     assert_equal "Santander MX", item.name
   end
+
+  test "import_latest_santander_mx_data reloads the item afterwards" do
+    provider = mock("provider")
+    provider.stubs(:get_transactions).with { |**| @item.name = "Dirty"; true }.returns({ "transactions" => [], "unparsed" => [] })
+    @item.stubs(:santander_mx_provider).returns(provider)
+
+    @item.import_latest_santander_mx_data
+
+    assert_not @item.changed?
+    assert_not_equal "Dirty", @item.name
+  end
+
+  test "import_latest_santander_mx_data returns the import result when the item row is gone" do
+    item = families(:dylan_family).santander_mx_items.create!(name: "Gone", base_url: "http://parser.test", api_token: "t")
+    provider = mock("provider")
+    provider.stubs(:get_transactions).with { |**| SantanderMxItem.where(id: item.id).delete_all; true }.returns({ "transactions" => [], "unparsed" => [] })
+    item.stubs(:santander_mx_provider).returns(provider)
+
+    result = item.import_latest_santander_mx_data
+
+    assert_equal false, result[:success]
+  end
 end

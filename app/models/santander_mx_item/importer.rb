@@ -28,19 +28,26 @@ class SantanderMxItem::Importer
   # Returns `{ success: true, accounts_seen:, transactions_seen:, unparsed_count: }` or
   # `{ success: false, error: }`. A failure never moves the cursor.
   def import
+    # Taken before the fetch so a sync that crosses midnight re-reads, not skips, that day.
+    synced_through = Date.current
     response = provider.get_transactions(since: since)
     rows = usable_rows(response[:transactions])
     unparsed = Array(response[:unparsed])
 
     SantanderMxItem.transaction do
+      # Serializes overlapping syncs of this item; the lock is held until the transaction ends.
+      # A fresh query, because `lock!` on this instance raises when it has unsaved changes.
+      SantanderMxItem.lock.find(santander_mx_item.id)
+
       accounts_seen = store_rows(rows)
       log_unparsed(unparsed) if unparsed.any?
-      santander_mx_item.update!(transactions_synced_through: Date.current, status: :good)
+      # No validations or dirty attributes: the cursor must move whatever else the item holds.
+      santander_mx_item.update_columns(transactions_synced_through: synced_through, status: "good", updated_at: Time.current)
 
       { success: true, accounts_seen: accounts_seen, transactions_seen: rows.size, unparsed_count: unparsed.size }
     end
   rescue Provider::SantanderMx::AuthenticationError, Provider::SantanderMx::ReauthorizationRequiredError => e
-    santander_mx_item.update!(status: :requires_update)
+    santander_mx_item.update_columns(status: "requires_update", updated_at: Time.current)
     capture_error("Santander MX service rejected the connection", e)
     failed(e.is_a?(Provider::SantanderMx::ReauthorizationRequiredError) ? e.message : I18n.t("santander_mx_item.errors.unauthorized"))
   rescue Provider::SantanderMx::Error => e
@@ -60,8 +67,8 @@ class SantanderMxItem::Importer
       by_id = {}
 
       Array(transactions).each do |row|
-        if row.is_a?(Hash) && row["id"].present? && row["account"].to_s.strip.present?
-          by_id[row["id"].to_s] = row
+        if row.is_a?(Hash) && usable_id?(row["id"]) && row["account"].is_a?(String) && row["account"].strip.present?
+          by_id[row["id"].to_s] = row.merge("account" => row["account"].strip)
         else
           skipped += 1
         end
@@ -82,28 +89,47 @@ class SantanderMxItem::Importer
       by_id.values
     end
 
+    def usable_id?(id)
+      (id.is_a?(String) && id.present?) || id.is_a?(Integer)
+    end
+
     # Returns the number of products the response touched.
     def store_rows(rows)
-      incoming_owner = rows.to_h { |row| [ row["id"].to_s, row["account"].to_s ] }
-      by_product = rows.group_by { |row| row["account"].to_s }
+      incoming_owner = rows.to_h { |row| [ row["id"].to_s, row["account"] ] }
+      by_product = rows.group_by { |row| row["account"] }
 
       by_product.each do |name, product_rows|
         account = find_or_create_account(name)
-        last4 = product_rows.reverse.filter_map { |row| row["account_last4"].presence }.first
-        currency = product_rows.reverse.filter_map { |row| row["currency"].presence }.first
+        last4 = latest_value(product_rows, "account_last4")
+        currency = latest_value(product_rows, "currency")
         account.assign_attributes({ last4: last4, currency: currency }.compact)
         account.save!
       end
 
       # A row whose product changed leaves its old product, so no entry is processed twice.
       santander_mx_item.santander_mx_accounts.reload.each do |account|
-        payload = account.raw_transactions_payload.to_h
+        payload = account.raw_transactions_payload
+        payload = {} unless payload.is_a?(Hash)
         merged = payload.reject { |id, _| incoming_owner[id] && incoming_owner[id] != account.name }
         by_product.fetch(account.name, []).each { |row| merged[row["id"].to_s] = row }
         account.update!(raw_transactions_payload: merged) if merged != payload
       end
 
       by_product.size
+    end
+
+    # The value of the newest row (by date, later in the response on a tie) that has one.
+    def latest_value(rows, key)
+      rows.each_with_index
+          .select { |row, _| row[key].present? }
+          .max_by { |row, index| [ row_date(row), index ] }
+          &.first&.fetch(key)
+    end
+
+    def row_date(row)
+      Date.parse(row["date"].to_s)
+    rescue ArgumentError
+      Date.new(0)
     end
 
     # The unique index on (item, name) is the arbiter between concurrent syncs.
