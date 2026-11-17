@@ -87,7 +87,7 @@ class SantanderMxItemsController < ApplicationController
   def select_existing_account
     @account = Current.family.accounts.find(params[:account_id])
 
-    if @account.account_providers.exists?
+    if @account.linked?
       redirect_to accounts_path, alert: t(".account_already_linked")
       return
     end
@@ -120,7 +120,7 @@ class SantanderMxItemsController < ApplicationController
       return
     end
 
-    if account.account_providers.exists?
+    if account.linked?
       redirect_to accounts_path, alert: t(".account_already_linked")
       return
     end

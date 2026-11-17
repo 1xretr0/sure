@@ -210,6 +210,32 @@ class SantanderMxItemsControllerTest < ActionDispatch::IntegrationTest
     assert_equal I18n.t("santander_mx_items.link_existing_account.account_already_linked"), flash[:alert]
   end
 
+  test "an account with a legacy plaid or simplefin link is neither offered nor linked" do
+    plaid_linked = accounts(:depository)
+    plaid_linked.update_columns(plaid_account_id: plaid_accounts(:one).id)
+    simplefin_item = SimplefinItem.create!(family: @family, name: "SF", access_url: "https://example.com/access")
+    simplefin_account = SimplefinAccount.create!(
+      simplefin_item: simplefin_item, name: "SF Checking", account_id: "sf_1", account_type: "depository",
+      currency: "USD", current_balance: 0
+    )
+    simplefin_linked = accounts(:connected)
+    simplefin_linked.update_columns(simplefin_account_id: simplefin_account.id)
+
+    [ plaid_linked, simplefin_linked ].each do |account|
+      get select_existing_account_santander_mx_items_url(santander_mx_item_id: @item.id, account_id: account.id)
+      assert_redirected_to accounts_path
+      assert_equal I18n.t("santander_mx_items.select_existing_account.account_already_linked"), flash[:alert]
+
+      assert_no_difference "AccountProvider.count" do
+        post link_existing_account_santander_mx_items_url, params: {
+          santander_mx_item_id: @item.id, account_id: account.id, santander_mx_account_id: @product.id
+        }
+      end
+      assert_redirected_to accounts_path
+      assert_equal I18n.t("santander_mx_items.link_existing_account.account_already_linked"), flash[:alert]
+    end
+  end
+
   test "link_existing_account refuses a product already linked" do
     @product.ensure_account_provider!(accounts(:connected))
 
