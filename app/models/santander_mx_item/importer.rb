@@ -118,7 +118,6 @@ class SantanderMxItem::Importer
         by_product.fetch(account.name, []).each { |row| merged[row["id"].to_s] = row }
         account.update!(raw_transactions_payload: merged) if merged != stored
       end
-
     end
 
     # The value of the newest row (by date, later in the response on a tie) that has one.
