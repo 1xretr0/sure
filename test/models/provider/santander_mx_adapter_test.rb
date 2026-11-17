@@ -20,6 +20,21 @@ class Provider::SantanderMxAdapterTest < ActiveSupport::TestCase
     configs.each { |config| assert_nil config[:new_account_path] }
   end
 
+  test "connection_configs skips items scheduled for deletion and items without credentials" do
+    family = families(:empty)
+    assert_equal [], Provider::SantanderMxAdapter.connection_configs(family: family)
+
+    kept = family.santander_mx_items.create!(name: "Kept", base_url: "http://parser.test", api_token: "t")
+    family.santander_mx_items.create!(name: "Deleting", base_url: "http://parser.test", api_token: "t", scheduled_for_deletion: true)
+    # Credentials are validated on save, so a blank one has to be written past validation.
+    family.santander_mx_items.create!(name: "No token", base_url: "http://parser.test", api_token: "t").update_columns(api_token: "")
+
+    configs = Provider::SantanderMxAdapter.connection_configs(family: family)
+
+    assert_equal [ "santander_mx_#{kept.id}" ], configs.map { |config| config[:key] }
+    assert_equal [ "Kept" ], configs.map { |config| config[:name] }
+  end
+
   test "a Santander-linked account has ledger-driven balances" do
     account = accounts(:credit_card)
     santander_mx_accounts(:gold).ensure_account_provider!(account)

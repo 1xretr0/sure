@@ -134,11 +134,59 @@ class Provider::SantanderMxTest < ActiveSupport::TestCase
     assert_equal 4, calls
   end
 
-  test "never includes the token in an error message" do
-    stub_response(401, { error: "unauthorized" }.to_json) do
-      error = assert_raises(Provider::SantanderMx::AuthenticationError) { provider.get_transactions(since: Date.current) }
-      assert_not_includes error.message, "tok"
+  # Token, host and a payload marker that must never reach an exception message, a
+  # DebugLogEntry or the Rails log, whichever way the request fails.
+  SECRET = "s3cret-xyz"
+  HOST = "http://parser-host.invalid"
+  PII = "PII-CARD-4111"
+
+  def leaks_after_failure(expected_error, status: nil, body: nil, raises: nil)
+    captured = []
+    log = StringIO.new
+    Rails.stubs(:logger).returns(Logger.new(log))
+    DebugLogEntry.stubs(:capture).with { |**args| captured << args }
+    client = Provider::SantanderMx.new(base_url: HOST, api_token: SECRET)
+    client.stubs(:sleep)
+
+    Provider::SantanderMx.stub(:get, ->(_url, query:, headers:) {
+      raise raises if raises
+      FakeResponse.new(code: status, message: "", body: body)
+    }) do
+      error = assert_raises(expected_error) { client.get_transactions(since: Date.current) }
+
+      [ [ "exception message", error.message ], [ "DebugLogEntry arguments", captured.to_s ], [ "Rails log", log.string ] ].each do |where, text|
+        [ SECRET, HOST, URI(HOST).host, PII ].each { |value| assert_not_includes text, value, "#{value} leaked into the #{where}" }
+      end
+      error
     end
+  end
+
+  test "a 401 leaks neither the token nor the URL" do
+    leaks_after_failure(Provider::SantanderMx::AuthenticationError, status: 401, body: { error: "unauthorized", detail: PII }.to_json)
+  end
+
+  test "a 503 surfaces the service text only" do
+    error = leaks_after_failure(
+      Provider::SantanderMx::ReauthorizationRequiredError, status: 503, body: { error: "re-authorize Gmail", detail: PII }.to_json
+    )
+    assert_equal "re-authorize Gmail", error.message
+  end
+
+  test "a 400 logs the service text only" do
+    leaks_after_failure(Provider::SantanderMx::Error, status: 400, body: { error: "since is required", detail: PII }.to_json)
+  end
+
+  test "a 502 leaks nothing from the response" do
+    leaks_after_failure(Provider::SantanderMx::Error, status: 502, body: { error: "gmail failure", detail: PII }.to_json)
+  end
+
+  test "a body that cannot be parsed leaks nothing" do
+    leaks_after_failure(Provider::SantanderMx::Error, status: 200, body: "<html>#{PII} #{SECRET}</html>")
+  end
+
+  test "a network error echoing the request keeps only its class" do
+    error = leaks_after_failure(Provider::SantanderMx::Error, raises: SocketError.new("getaddrinfo #{HOST} #{SECRET}"))
+    assert_equal :network_error, error.failure_code
   end
 
   test "does not follow redirects so the bearer token cannot leave the configured host" do

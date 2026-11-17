@@ -55,11 +55,32 @@ class SantanderMxAccount::Transactions::ProcessorTest < ActiveSupport::TestCase
     assert_equal "m1", result[:errors].first[:transaction_id]
   end
 
+  test "a purchase and a transfer_in move the linked card's ledger-driven balance" do
+    account = @santander_account.current_account
+    account.entries.create!(
+      date: 10.days.ago.to_date, name: "Opening balance", amount: 1000, currency: "MXN",
+      entryable: Valuation.new(kind: "opening_anchor")
+    )
+    @santander_account.update!(raw_transactions_payload: {
+      "p1" => row("p1", "purchase", amount: 250.0, date: 3.days.ago.to_date.iso8601),
+      "t1" => row("t1", "transfer_in", amount: 100.0, date: 2.days.ago.to_date.iso8601)
+    })
+
+    Account::MarketDataImporter.any_instance.stubs(:import_all)
+
+    result = SantanderMxAccount::Transactions::Processor.new(@santander_account).process
+    Account::Syncer.new(account).perform_sync(OpenStruct.new(window_start_date: nil))
+
+    assert_equal 2, result[:imported]
+    # A card balance is what is owed: the purchase adds to it and the incoming payment takes it down.
+    assert_equal 1150, account.reload.balance
+  end
+
   private
-    def row(id, type)
+    def row(id, type, amount: 100.0, date: "2026-11-03T14:32:05")
       {
         "id" => id, "account" => "SANTANDER GOLD", "account_last4" => "1234",
-        "date" => "2026-11-03T14:32:05", "amount" => 100.0, "currency" => "MXN",
+        "date" => date, "amount" => amount, "currency" => "MXN",
         "type" => type, "description" => "EXAMPLE STORE", "details" => {}
       }
     end

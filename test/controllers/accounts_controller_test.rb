@@ -1908,12 +1908,18 @@ class AccountsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, I18n.t("accounts.show.activity.new_balance")
   end
 
-  test "the new credit card and depository pages render when the family has a Santander connection" do
-    assert @user.family.santander_mx_items.exists?
+  test "the new credit card and depository method selectors offer no Santander link" do
+    item = santander_mx_items(:one)
+    assert_equal @user.family, item.family
+    assert item.credentials_configured?
 
     [ new_credit_card_path(step: "method_select"), new_depository_path(step: "method_select") ].each do |path|
       get path
+
       assert_response :success
+      assert_includes response.body, I18n.t("accounts.new.method_selector.manual_entry")
+      assert_not_includes response.body, I18n.t("accounts.new.method_selector.link_with_provider", provider: item.name)
+      assert_not_includes response.body, "santander_mx_items"
     end
   end
 
@@ -1927,15 +1933,59 @@ class AccountsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "SANTANDER GOLD"
     assert_includes response.body, I18n.t("santander_mx_items.santander_mx_item.waiting_to_link", name: "SANTANDER GOLD", last4: "1234")
     assert_select "##{dom_id(item)}", text: /need setup/i, count: 0
+    assert_select "##{dom_id(item)}", text: /Needs attention/, count: 0
   end
 
-  test "accounts index shows the Santander requires update state" do
-    santander_mx_items(:one).update!(status: :requires_update)
+  test "accounts index shows the Santander requires update state covering both causes" do
+    item = santander_mx_items(:one)
+    item.update!(status: :requires_update)
 
     get accounts_url
 
     assert_response :success
-    assert_includes response.body, I18n.t("santander_mx_items.santander_mx_item.requires_update")
+    assert_select "##{dom_id(item)}", text: /Needs attention/
+    assert_select "##{dom_id(item)}", text: /#{Regexp.escape(I18n.t("santander_mx_items.santander_mx_item.requires_update_description"))}/
+    # The service answers 401 for a bad token and 503 for an expired Gmail grant; the card names both.
+    assert_select "##{dom_id(item)}", text: /API token/
+    assert_select "##{dom_id(item)}", text: /Gmail/
+  end
+
+  test "a product without a last4 is listed by name alone" do
+    item = santander_mx_items(:one)
+    santander_mx_accounts(:gold).update!(last4: nil)
+    item.santander_mx_accounts.create!(name: "SANTANDER LIKEU", last4: "")
+
+    get accounts_url
+
+    assert_response :success
+    card = css_select("##{dom_id(item)}").text
+    assert_includes card, "SANTANDER GOLD"
+    assert_includes card, "SANTANDER LIKEU"
+    assert_no_match(/ending|\(\s*\)/, card)
+  end
+
+  test "only an admin sees the Santander products waiting to be linked" do
+    item = santander_mx_items(:one)
+    member = users(:family_member)
+    linked = accounts(:depository)
+    linked.update!(owner: @user)
+    linked.account_shares.destroy_all
+    linked.account_shares.create!(user: member, permission: "read_only")
+    santander_mx_accounts(:gold).ensure_account_provider!(linked)
+    item.santander_mx_accounts.create!(name: "SANTANDER WAITING", last4: "9876")
+    # TODO: drop once Provider::SantanderMxAdapter includes Provider::InstitutionMetadata; without
+    # it any page that renders a Santander-linked account raises on the institution lookups.
+    Account.any_instance.stubs(institution_domain: nil, institution_name: nil, logo_url: nil)
+
+    get accounts_url
+    assert_select "##{dom_id(item)}", text: /SANTANDER WAITING/
+
+    sign_in member
+    get accounts_url
+    assert_response :success
+    assert_select "##{dom_id(item)}"
+    assert_select "##{dom_id(item)}", text: /SANTANDER WAITING/, count: 0
+    assert_select "##{dom_id(item)}", text: /#{Regexp.escape(I18n.t("santander_mx_items.santander_mx_item.waiting_title"))}/, count: 0
   end
 
   private

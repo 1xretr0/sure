@@ -45,13 +45,31 @@ class SantanderMxItemsControllerTest < ActionDispatch::IntegrationTest
   test "create with an invalid url shows the validation error" do
     assert_no_difference "SantanderMxItem.count" do
       post santander_mx_items_url, params: {
-        santander_mx_item: { name: "Cards", base_url: "not a url", api_token: "tok" }
+        santander_mx_item: { name: "Cards", base_url: "not a url", api_token: "s3cret-xyz" }
       }
     end
 
     assert_redirected_to settings_providers_path
     assert flash[:alert].present?
-    assert_not_includes flash[:alert], "tok"
+    assert_not_includes flash[:alert], "s3cret-xyz"
+  end
+
+  test "a rejected create or update never echoes a submitted token into the re-rendered panel" do
+    assert_no_difference "SantanderMxItem.count" do
+      post santander_mx_items_url, params: {
+        santander_mx_item: { name: "Cards", base_url: "not a url", api_token: "s3cret-xyz" }
+      }, as: :turbo_stream
+    end
+    assert_turbo_stream status: :unprocessable_entity, action: "replace", target: "santander-mx-providers-panel"
+    assert_not_includes response.body, "s3cret-xyz"
+
+    patch santander_mx_item_url(@item), params: {
+      santander_mx_item: { base_url: "not a url", api_token: "s3cret-rotated" }
+    }, as: :turbo_stream
+    assert_turbo_stream status: :unprocessable_entity, action: "replace", target: "santander-mx-providers-panel"
+    [ "s3cret-rotated", "santander-test-token" ].each { |token| assert_not_includes response.body, token }
+    assert_equal "http://parser.test", @item.reload.base_url
+    assert_equal "santander-test-token", @item.api_token
   end
 
   test "update with a blank token keeps the stored token" do
@@ -76,6 +94,16 @@ class SantanderMxItemsControllerTest < ActionDispatch::IntegrationTest
     @item.reload
     assert_equal "fresh-token", @item.api_token
     assert @item.good?
+  end
+
+  test "update only syncs when the token is rotated" do
+    SyncJob.expects(:perform_later).never
+
+    patch santander_mx_item_url(@item), params: {
+      santander_mx_item: { name: "Renamed", base_url: "http://other.test", sync_start_date: "2026-02-01", api_token: "" }
+    }
+
+    assert_equal "Renamed", @item.reload.name
   end
 
   test "update from the page re-renders the panel in place" do
@@ -247,10 +275,11 @@ class SantanderMxItemsControllerTest < ActionDispatch::IntegrationTest
     assert_nil @product.reload.account_provider
   end
 
-  test "the providers settings page renders the Santander panel" do
+  test "the providers settings page renders the Santander panel without the stored token" do
     get settings_providers_path
 
     assert_response :success
     assert_includes response.body, "santander-mx-providers-panel"
+    assert_not_includes response.body, "santander-test-token"
   end
 end

@@ -68,6 +68,24 @@ class SantanderMxEntry::ProcessorTest < ActiveSupport::TestCase
     assert_equal "Santander purchase", process(row("description" => "")).name
   end
 
+  test "uses the linked account's currency when the row has none" do
+    assert_equal "MXN", process(row("id" => "m2", "currency" => nil)).currency
+    assert_equal "MXN", process(row("id" => "m3", "currency" => "")).currency
+  end
+
+  test "keeps a row's own currency over the account's" do
+    assert_equal "USD", process(row("currency" => "USD")).currency
+  end
+
+  test "truncates a very long description to 255 characters" do
+    assert_equal 255, process(row("description" => "X" * 400)).name.length
+  end
+
+  test "books a zero amount as a zero entry for either direction" do
+    assert_equal 0, process(row("id" => "z1", "amount" => "0.00")).amount
+    assert_equal 0, process(row("id" => "z2", "amount" => 0, "type" => "transfer_in")).amount
+  end
+
   test "stores type, last4 and details under extra" do
     entry = process(row("details" => { "merchant" => "X" }))
 

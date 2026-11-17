@@ -118,8 +118,11 @@ class SantanderMxItem::ImporterTest < ActiveSupport::TestCase
     assert import[:success]
   end
 
-  test "logs unparsed messages" do
-    unparsed = [ { "id" => "m1", "subject" => "Hola", "received_at" => "2026-11-01T10:00:00Z", "body" => "secret" } ]
+  test "logs unparsed messages with their id, subject and date but never their content" do
+    unparsed = [
+      { "id" => "m1", "subject" => "Hola", "received_at" => "2026-11-01T10:00:00Z", "body" => "PII-BODY " * 200 },
+      { "id" => "m2", "subject" => "Adios", "received_at" => "2026-11-02T08:30:00Z", "snippet" => "PII-SNIPPET", "from" => "pii@example.com" }
+    ]
     @provider.stubs(:get_transactions).returns(response([], unparsed))
 
     result = nil
@@ -127,10 +130,18 @@ class SantanderMxItem::ImporterTest < ActiveSupport::TestCase
       result = import
     end
 
-    assert_equal 1, result[:unparsed_count]
-    entry = DebugLogEntry.where(provider_key: "santander_mx").last
+    assert result[:success]
+    assert_equal 2, result[:unparsed_count]
+    entry = DebugLogEntry.where(provider_key: "santander_mx").sole
+    assert_equal "provider_sync", entry.category
     assert_equal "warn", entry.level
-    refute_includes entry.metadata.to_s, "secret"
+    assert_equal @item.family, entry.family
+    assert_equal(
+      [ { "id" => "m1", "subject" => "Hola", "received_at" => "2026-11-01T10:00:00Z" },
+        { "id" => "m2", "subject" => "Adios", "received_at" => "2026-11-02T08:30:00Z" } ],
+      entry.metadata["unparsed"]
+    )
+    assert_not_includes entry.to_json, "PII"
   end
 
   test "401 marks the item requires_update and keeps the cursor" do
@@ -181,6 +192,34 @@ class SantanderMxItem::ImporterTest < ActiveSupport::TestCase
     assert @item.reload.good?
     assert_nil @item.transactions_synced_through
     assert_not_includes DebugLogEntry.where(provider_key: "santander_mx").last.metadata.to_s, "secret-token"
+  end
+
+  {
+    "a rejected request" => Provider::SantanderMx::Error.new("since is required", failure_code: :bad_request),
+    "a service error" => Provider::SantanderMx::Error.new("Santander MX service error (502). Please try again later.", failure_code: :server_error),
+    "a network error after retries" => Provider::SantanderMx::Error.new("Network error after 3 retries: SocketError", failure_code: :network_error),
+    "a raw timeout echoing the request" => Net::ReadTimeout.new("GET http://santander-host.invalid/transactions Bearer s3cret-xyz")
+  }.each do |name, error|
+    test "#{name} fails the import, leaves status and cursor alone and logs no token or URL" do
+      item = SantanderMxItem.create!(
+        family: families(:empty), name: "Leaky", base_url: "http://santander-host.invalid", api_token: "s3cret-xyz",
+        transactions_synced_through: Date.new(2026, 11, 1)
+      )
+      @provider.stubs(:get_transactions).raises(error)
+
+      result = SantanderMxItem::Importer.new(item, provider: @provider).import
+
+      assert_equal false, result[:success]
+      item.reload
+      assert item.good?
+      assert_equal Date.new(2026, 11, 1), item.transactions_synced_through
+      logged = DebugLogEntry.where(provider_key: "santander_mx", family: item.family)
+      assert_equal 1, logged.count
+      assert_equal "error", logged.sole.level
+      [ result[:error].to_s, logged.to_json ].each do |text|
+        [ "s3cret-xyz", "santander-host.invalid" ].each { |secret| assert_not_includes text, secret }
+      end
+    end
   end
 
   test "last4 and currency come from the newest row whatever the response order" do
