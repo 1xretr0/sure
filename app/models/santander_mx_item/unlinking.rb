@@ -6,7 +6,7 @@ module SantanderMxItem::Unlinking
 
   # Idempotently remove all connections between this Santander MX item and local accounts.
   # - Detaches any AccountProvider links for each SantanderMxAccount
-  # - Detaches Holdings that point at the AccountProvider links
+  # Santander MX imports transactions only, so no Holding ever points at these links.
   # Returns a per-account result payload for observability
   def unlink_all!(dry_run: false)
     results = []
@@ -25,15 +25,7 @@ module SantanderMxItem::Unlinking
 
       begin
         ActiveRecord::Base.transaction do
-          # Detach holdings for any provider links found
-          if link_ids.any?
-            Holding.where(account_provider_id: link_ids).update_all(account_provider_id: nil)
-          end
-
-          # Destroy all provider links
-          links.each do |ap|
-            ap.destroy!
-          end
+          links.each(&:destroy!)
         end
       rescue StandardError => e
         Rails.logger.warn(
