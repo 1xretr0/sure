@@ -36,6 +36,7 @@ en:
       token_required: Enter the API token of your statement parser service.
     update:
       success: Santander MX connection updated.
+      base_url_requires_token: Enter the API token again to change the parser service URL.
     destroy:
       success: Santander MX connection scheduled for deletion.
       unlink_failed: Could not unlink the Santander MX accounts. Try again.

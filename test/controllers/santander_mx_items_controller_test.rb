@@ -72,15 +72,38 @@ class SantanderMxItemsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "santander-test-token", @item.api_token
   end
 
-  test "update with a blank token keeps the stored token" do
+  test "update with a blank token and an unchanged url keeps the stored token" do
     patch santander_mx_item_url(@item), params: {
-      santander_mx_item: { name: "Renamed", base_url: "http://other.test", api_token: "" }
+      santander_mx_item: { name: "Renamed", base_url: " #{@item.base_url} ", api_token: "" }
     }
 
     @item.reload
     assert_equal "Renamed", @item.name
-    assert_equal "http://other.test", @item.base_url
+    assert_equal "http://parser.test", @item.base_url
     assert_equal "santander-test-token", @item.api_token
+  end
+
+  test "changing the url without a new token is refused and changes nothing" do
+    patch santander_mx_item_url(@item), params: {
+      santander_mx_item: { name: "Renamed", base_url: "http://attacker.test", api_token: "" }
+    }, as: :turbo_stream
+
+    assert_turbo_stream status: :unprocessable_entity, action: "replace", target: "santander-mx-providers-panel"
+    assert_includes response.body, I18n.t("santander_mx_items.update.base_url_requires_token")
+    @item.reload
+    assert_equal "Test Santander MX Connection", @item.name
+    assert_equal "http://parser.test", @item.base_url
+    assert_equal "santander-test-token", @item.api_token
+  end
+
+  test "changing the url together with a new token is accepted" do
+    patch santander_mx_item_url(@item), params: {
+      santander_mx_item: { base_url: "http://other.test", api_token: "fresh-token" }
+    }
+
+    @item.reload
+    assert_equal "http://other.test", @item.base_url
+    assert_equal "fresh-token", @item.api_token
   end
 
   test "update with a new token clears requires_update" do
@@ -101,7 +124,7 @@ class SantanderMxItemsControllerTest < ActionDispatch::IntegrationTest
     SyncJob.expects(:perform_later).never
 
     patch santander_mx_item_url(@item), params: {
-      santander_mx_item: { name: "Renamed", base_url: "http://other.test", sync_start_date: "2026-02-01", api_token: "" }
+      santander_mx_item: { name: "Renamed", base_url: @item.base_url, sync_start_date: "2026-02-01", api_token: "" }
     }
 
     @item.reload
