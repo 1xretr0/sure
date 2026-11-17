@@ -228,6 +228,35 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
                   "change->money-field#handleCurrencyChange change->transaction-form#onCurrencyChange"
   end
 
+  test "the new transaction picker lists unlinked and Santander-linked accounts but not balance-reporting linked ones" do
+    santander = linked_depository("Santander Gold debit", santander_mx_accounts(:gold))
+    fio = linked_depository("Fio checking", fio_accounts(:checking))
+
+    get new_transaction_path
+
+    assert_response :success
+    assert_select "[role=option][data-value=?]", accounts(:depository).id
+    assert_select "[role=option][data-value=?]", santander.id
+    assert_select "[role=option][data-value=?]", fio.id, count: 0
+  end
+
+  test "creates a transaction by hand on a Santander-linked account" do
+    account = linked_depository("Santander Gold debit", santander_mx_accounts(:gold))
+
+    assert_difference -> { account.entries.count }, 1 do
+      post transactions_url, params: {
+        entry: {
+          account_id: account.id, name: "Hand entered", date: Date.current, currency: "MXN",
+          amount: 100, nature: "outflow", entryable_type: "Transaction",
+          entryable_attributes: { category_id: Category.first.id }
+        }
+      }
+    end
+
+    assert_redirected_to account_url(account)
+    assert_nil account.entries.find_by!(name: "Hand entered").source
+  end
+
   test "creates with transaction details" do
     assert_difference [ "Entry.count", "Transaction.count" ], 1 do
       post transactions_url, params: {
@@ -2518,6 +2547,12 @@ end
   end
 
   private
+    def linked_depository(name, provider_account)
+      account = Account.create!(family: families(:dylan_family), owner: @user, name: name, accountable: Depository.new, balance: 0, currency: "MXN")
+      AccountProvider.create!(account: account, provider: provider_account)
+      account
+    end
+
     # The Allocator's two-key advisory lock on this entry, held by this session.
     def entry_lock_held?(entry)
       ActiveRecord::Base.connection.select_value(ActiveRecord::Base.sanitize_sql_array([ <<~SQL, RecurringTransaction::Allocator::ENTRY_LOCK_NAMESPACE, RecurringTransaction::Allocator.entry_lock_id(entry) ]))

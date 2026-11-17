@@ -750,12 +750,15 @@ class TransactionsController < ApplicationController
       accessible_accounts_scope = accessible_accounts
 
       @account_currencies = accessible_accounts_scope.pluck(:id, :currency).to_h
+      # Hand entry is for accounts whose balance isn't set by a provider: unlinked
+      # ones and ledger-driven ones (e.g. Santander MX). Filtered in Ruby because
+      # `reports_balance?` lives on the provider adapters, not in SQL.
       @manual_accounts = accessible_accounts_scope
-        .manual
         .active
         .alphabetically
-        .includes(:account_providers, logo_attachment: :blob)
+        .includes(account_providers: :provider, logo_attachment: :blob)
         .to_a
+        .reject(&:balance_from_provider?)
       @categories = Current.family.categories.alphabetically_by_hierarchy.to_a
       @merchants = Current.family.available_merchants_for(Current.user).with_attached_logo.alphabetically.to_a
       @tags = Current.family.tags.alphabetically.to_a
