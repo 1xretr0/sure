@@ -68,4 +68,13 @@ class Provider::SantanderMxAdapterTest < ActiveSupport::TestCase
     )
     assert_equal adapter.institution_metadata, adapter.metadata[:institution]
   end
+
+  test "institution lookups return nil when the account has no item" do
+    adapter = Provider::Factory.create_adapter(SantanderMxAccount.new)
+
+    assert_nil adapter.institution_domain
+    assert_nil adapter.institution_name
+    assert_nil adapter.institution_url
+    assert_nothing_raised { adapter.metadata }
+  end
 end

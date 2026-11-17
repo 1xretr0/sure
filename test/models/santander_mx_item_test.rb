@@ -89,4 +89,9 @@ class SantanderMxItemTest < ActiveSupport::TestCase
 
     assert_equal false, result[:success]
   end
+
+  test "institution details come from the provider registry" do
+    assert_equal "https://www.santander.com.mx", @item.institution_url
+    assert_equal "Santander México", @item.institution_display_name
+  end
 end
