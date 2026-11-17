@@ -96,14 +96,43 @@ class SantanderMxItemsControllerTest < ActionDispatch::IntegrationTest
     assert @item.good?
   end
 
-  test "update only syncs when the token is rotated" do
+  test "update does not sync when neither the token nor the start date changes" do
+    @item.update!(sync_start_date: Date.new(2026, 2, 1), transactions_synced_through: Date.new(2026, 11, 10))
     SyncJob.expects(:perform_later).never
 
     patch santander_mx_item_url(@item), params: {
       santander_mx_item: { name: "Renamed", base_url: "http://other.test", sync_start_date: "2026-02-01", api_token: "" }
     }
 
-    assert_equal "Renamed", @item.reload.name
+    @item.reload
+    assert_equal "Renamed", @item.name
+    assert_equal Date.new(2026, 11, 10), @item.transactions_synced_through
+  end
+
+  test "changing the start date resets the cursor and enqueues a sync" do
+    @item.update!(sync_start_date: Date.new(2026, 2, 1), transactions_synced_through: Date.new(2026, 11, 10))
+    SyncJob.expects(:perform_later).with { |sync| sync.syncable == @item }.once
+
+    patch santander_mx_item_url(@item), params: {
+      santander_mx_item: { name: @item.name, base_url: @item.base_url, sync_start_date: "2026-01-01", api_token: "" }
+    }
+
+    @item.reload
+    assert_equal Date.new(2026, 1, 1), @item.sync_start_date
+    assert_nil @item.transactions_synced_through
+  end
+
+  test "changing the start date and the token together enqueues one sync" do
+    @item.update!(sync_start_date: Date.new(2026, 2, 1), transactions_synced_through: Date.new(2026, 11, 10))
+    SyncJob.expects(:perform_later).once
+
+    patch santander_mx_item_url(@item), params: {
+      santander_mx_item: { name: @item.name, base_url: @item.base_url, sync_start_date: "2026-01-01", api_token: "fresh-token" }
+    }
+
+    @item.reload
+    assert_nil @item.transactions_synced_through
+    assert_equal "fresh-token", @item.api_token
   end
 
   test "update from the page re-renders the panel in place" do

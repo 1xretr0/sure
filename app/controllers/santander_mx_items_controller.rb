@@ -40,9 +40,15 @@ class SantanderMxItemsController < ApplicationController
     # A rotated token is the fix for the failed authorization that set requires_update.
     attributes[:status] = :good if rotated_token && @santander_mx_item.requires_update?
 
-    if @santander_mx_item.update(attributes)
-      # Only a sync can find out whether the service accepts the new token.
-      @santander_mx_item.sync_later if rotated_token && !@santander_mx_item.syncing?
+    @santander_mx_item.assign_attributes(attributes)
+    # The importer reads sync_start_date only until the first sync stores a cursor, so a new
+    # date has to clear it. Re-reading is safe: rows merge by Gmail id and entries are idempotent.
+    start_date_changed = @santander_mx_item.sync_start_date_changed?
+    @santander_mx_item.transactions_synced_through = nil if start_date_changed
+
+    if @santander_mx_item.save
+      # Only a sync can find out whether the service accepts the new token or reads the new date.
+      @santander_mx_item.sync_later if (rotated_token || start_date_changed) && !@santander_mx_item.syncing?
       render_provider_panel("santander_mx", notice: t(".success"))
     else
       render_provider_panel("santander_mx", alert: @santander_mx_item.errors.full_messages.join(", "))
