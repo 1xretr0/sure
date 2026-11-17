@@ -38,7 +38,7 @@ class Provider::SantanderMx < Provider
 
   OPERATION = "GET transactions"
 
-  attr_reader :base_url, :api_token
+  attr_reader :base_url
 
   def initialize(base_url:, api_token:)
     @base_url = base_url.to_s.strip
@@ -73,6 +73,8 @@ class Provider::SantanderMx < Provider
   end
 
   private
+
+    attr_reader :api_token
 
     def request_headers
       { "Accept" => "application/json", "Authorization" => "Bearer #{api_token}" }
