@@ -228,6 +228,12 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
                   "change->money-field#handleCurrencyChange change->transaction-form#onCurrencyChange"
   end
 
+  test "new form keeps the description combobox inline on small screens" do
+    get new_transaction_path
+
+    assert_select "[data-hw-combobox-small-viewport-max-width-value=?]", "0px", count: 1
+  end
+
   test "the new transaction picker lists unlinked and Santander-linked accounts but not balance-reporting linked ones" do
     santander = linked_depository("Santander Gold debit", santander_mx_accounts(:gold))
     fio = linked_depository("Fio checking", fio_accounts(:checking))

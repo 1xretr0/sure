@@ -30,6 +30,7 @@
             name_suggestions_transactions_path,
             free_text: true,
             autocomplete: :list,
+            mobile_at: "0px", # never swap to the gem's full-screen dialog; suggestions drop down inline
             label: t(".description"),
             placeholder: auto_generate_names ? t(".description_placeholder_optional") : t(".description_placeholder"),
             required: !auto_generate_names,
