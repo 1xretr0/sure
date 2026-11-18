@@ -227,9 +227,24 @@ end %>
     <%= tag.nav class: "lg:hidden fixed bottom-0 left-0 right-0 bg-surface z-10 border-t border-tertiary flex justify-around pb-[env(safe-area-inset-bottom)]",
       data: { viewport_target: "bottomNav" } do %>
       <% bottom_nav_items = mobile_nav_items.reject { |item| item[:desktop_only] } %>
-      <% bottom_nav_items.insert(bottom_nav_items.size / 2, new_transaction_nav_item.merge(raised: true)) unless intro_mode %>
-      <% bottom_nav_items.each do |nav_item| %>
-        <%= render "layouts/shared/nav_item", **nav_item %>
+      <% if intro_mode %>
+        <% bottom_nav_items.each do |nav_item| %>
+          <%= render "layouts/shared/nav_item", **nav_item %>
+        <% end %>
+      <% else %>
+        <%# Equal-width halves keep "+" at the true centre when the item count is odd. %>
+        <% left, right = bottom_nav_items.partition.with_index { |_, i| i < (bottom_nav_items.size + 1) / 2 } %>
+        <div class="flex-1 flex justify-around">
+          <% left.each do |nav_item| %>
+            <%= render "layouts/shared/nav_item", **nav_item %>
+          <% end %>
+        </div>
+        <%= render "layouts/shared/nav_item", **new_transaction_nav_item.merge(raised: true) %>
+        <div class="flex-1 flex justify-around">
+          <% right.each do |nav_item| %>
+            <%= render "layouts/shared/nav_item", **nav_item %>
+          <% end %>
+        </div>
       <% end %>
     <% end %>
     <%# "What's new" release highlight: one dialog per deployed release,

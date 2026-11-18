@@ -335,8 +335,11 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
     assert_select "nav a[href=?][data-turbo-frame=modal]", new_transaction_path, count: 2 do
       assert_select "p", text: "New"
     end
-    hrefs = css_select("nav[data-viewport-target=bottomNav] > a").map { |a| a["href"] }
-    assert_equal (hrefs.size - 1) / 2, hrefs.index(new_transaction_path)
+    # Equal-width halves either side keep "+" centred even with an odd item count.
+    parts = css_select("nav[data-viewport-target=bottomNav] > *")
+    assert_equal 3, parts.size
+    assert_equal new_transaction_path, parts[1]["href"]
+    assert_equal parts[0]["class"], parts[2]["class"]
   end
 
   test "intro layout has no new transaction nav entry" do

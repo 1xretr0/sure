@@ -165,8 +165,8 @@ module ApplicationHelper
   end
 
   # The family-wide investment hub. Preview-gated (hidden entirely without the
-  # flag) and desktop-only: the bottom bar already carries five entries at the
-  # width it has, and the hub is a wide, multi-section page. `desktop_only`
+  # flag) and desktop-only: the bottom bar is already full at the width it has,
+  # and the hub is a wide, multi-section page. `desktop_only`
   # is filtered out of the mobile bar in the layout, the mirror of the
   # `mobile_only` flag the Assistant entry uses.
   def portfolio_nav_item
