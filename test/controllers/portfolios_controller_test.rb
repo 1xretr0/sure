@@ -195,9 +195,10 @@ class PortfoliosControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?]", portfolio_path, count: 0
   end
 
-  # Portfolio is the only desktop-only entry, so every other item still
+  # Portfolio is the only desktop-only page, so every other page still
   # reaches both bars: the mobile bar is the desktop rail without Portfolio,
-  # plus the mobile-only Assistant.
+  # plus the mobile-only Assistant. New transaction is in both bars but at a
+  # different position (centred on mobile), so it is left out of the order check.
   test "every other nav item still renders in both bars" do
     get root_path
     assert_response :success
@@ -206,7 +207,7 @@ class PortfoliosControllerTest < ActionDispatch::IntegrationTest
     mobile = css_select("nav[data-viewport-target=bottomNav] a").map { |link| link["href"] }
 
     assert_includes desktop, portfolio_path
-    assert_equal desktop - [ portfolio_path ], mobile - [ chats_path ]
+    assert_equal desktop - [ portfolio_path, new_transaction_path ], mobile - [ chats_path, new_transaction_path ]
     assert_includes mobile, chats_path if @family.assistant_enabled?
   end
 
