@@ -25,6 +25,22 @@ class NavItemViewTest < ActionView::TestCase
     assert_not_includes html, "aria-current"
   end
 
+  test "frame targets the link at a turbo frame and omits aria-current" do
+    html = render(partial: "layouts/shared/nav_item", locals: {
+      name: "New", path: "/transactions/new", icon: "plus", icon_custom: false, active: false, frame: :modal
+    })
+
+    assert_includes html, "data-turbo-frame=\"modal\""
+    assert_not_includes html, "aria-current"
+  end
+
+  test "raised draws the inverse round icon container" do
+    locals = { name: "New", path: "/transactions/new", icon: "plus", icon_custom: false, active: false }
+
+    assert_not_includes render(partial: "layouts/shared/nav_item", locals: locals), "bg-inverse"
+    assert_includes render(partial: "layouts/shared/nav_item", locals: locals.merge(raised: true)), "bg-inverse"
+  end
+
   # The layout filters desktop-only items out of the bottom bar; the partial
   # itself accepts the flag and draws the same link with or without it.
   test "desktop_only defaults off and leaves the item's markup unchanged" do

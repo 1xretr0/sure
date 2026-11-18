@@ -329,6 +329,24 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
     assert_response :ok
   end
 
+  test "nav opens new transaction from the desktop rail and the middle of the mobile bar" do
+    get root_path
+
+    assert_select "nav a[href=?][data-turbo-frame=modal]", new_transaction_path, count: 2 do
+      assert_select "p", text: "New"
+    end
+    hrefs = css_select("nav[data-viewport-target=bottomNav] > a").map { |a| a["href"] }
+    assert_equal (hrefs.size - 1) / 2, hrefs.index(new_transaction_path)
+  end
+
+  test "intro layout has no new transaction nav entry" do
+    sign_in @intro_user
+
+    get intro_path
+
+    assert_select "nav a[href=?]", new_transaction_path, count: 0
+  end
+
   test "dashboard renders sankey chart with subcategories" do
     # Create parent category with subcategory
     parent_category = @family.categories.create!(name: "Shopping", color: "#FF5733")

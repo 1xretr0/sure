@@ -1,14 +1,18 @@
-<%# locals: (name:, path:, icon:, icon_custom:, active:, mobile_only: false, desktop_only: false, preview: false) %>
+<%# locals: (name:, path:, icon:, icon_custom:, active:, mobile_only: false, desktop_only: false, preview: false, frame: nil, raised: false) %>
 
-<%= link_to path, class: "space-y-1 group block relative pb-1 focus-ring rounded-lg", aria: { current: ("page" if active) } do %>
+<%= link_to path, class: "space-y-1 group block relative pb-1 focus-ring rounded-lg", aria: { current: ("page" if active) }, data: { turbo_frame: frame } do %>
   <div class="grow flex flex-col lg:flex-row gap-1 items-center">
     <%= tag.div class: class_names("w-4 h-1 lg:w-1 lg:h-4 rounded-bl-sm rounded-br-sm lg:rounded-tr-sm lg:rounded-br-sm lg:rounded-bl-none", "bg-nav-indicator" => active) %>
 
     <%= tag.div class: class_names(
-      "w-8 h-8 flex items-center justify-center mx-auto rounded-lg relative",
-      active ? "bg-container shadow-xs text-primary" : "group-hover:bg-surface-hover text-secondary"
+      "flex items-center justify-center mx-auto relative",
+      if raised
+        "w-11 h-11 -mt-4 rounded-full shadow-xs bg-inverse group-hover:bg-inverse-hover"
+      else
+        [ "w-8 h-8 rounded-lg", active ? "bg-container shadow-xs text-primary" : "group-hover:bg-surface-hover text-secondary" ]
+      end
     ) do %>
-      <%= icon(icon, color: active ? "current" : "default", custom: icon_custom) %>
+      <%= icon(icon, color: raised ? "white" : (active ? "current" : "default"), custom: icon_custom) %>
       <% if preview %>
         <span class="absolute -top-0.5 -right-0.5">
           <%= render DS::Pill.new(tone: :violet, dot_only: true, title: t("shared.preview")) %>

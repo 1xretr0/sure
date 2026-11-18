@@ -152,6 +152,18 @@ module ApplicationHelper
     end
   end
 
+  # An action, not a page: opens the new-transaction form in the modal frame.
+  def new_transaction_nav_item
+    {
+      name: t("layouts.application.nav.new_transaction"),
+      path: new_transaction_path,
+      icon: "plus",
+      icon_custom: false,
+      active: false,
+      frame: :modal
+    }
+  end
+
   # The family-wide investment hub. Preview-gated (hidden entirely without the
   # flag) and desktop-only: the bottom bar already carries five entries at the
   # width it has, and the hub is a wide, multi-section page. `desktop_only`
