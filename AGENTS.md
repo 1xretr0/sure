@@ -16,6 +16,7 @@
 ## Tests and pull requests
 
 - Use Minitest and fixtures for behavioral tests, with Mocha and VCR where needed. RSpec/rswag is for OpenAPI documentation only. Follow the [testing guide](docs/llm-guides/testing.md).
+- Agents running inside Claude Code run the suite as `env -u ANTHROPIC_BASE_URL bin/rails test`: the session's gateway URL otherwise leaks into the process and fails the AI, hostings and provider registry tests.
 - Run `bin/rails test` and ensure it is green before pushing. Before opening a PR, run **all** checks in the [pre-PR checklist](docs/llm-guides/development.md#before-opening-a-pull-request): full Rails tests, applicable system tests, Ruby and ERB lint, Biome and Brakeman. Only create the PR when all required checks pass.
 - Commits use imperative subjects of at most 72 characters, with rationale and issue references where relevant. Target `main` with small, cohesive changes.
 - PRs explain the problem, resulting behavior and validation; link issues and include screenshots for UI changes and migration notes when applicable. Ensure CI passes and the branch is up to date before requesting review; see [CONTRIBUTING.md](CONTRIBUTING.md).
